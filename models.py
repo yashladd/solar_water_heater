@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 import math
 import matplotlib.pyplot as plt
 from collections import namedtuple
+import matplotlib.dates as mdates
+import calendar
+
 
 # Define a namedtuple with all required parameters
 SimulationParameters = namedtuple('SimulationParameters', [
@@ -190,11 +193,6 @@ class SimulationEnvironment:
         )
         return params
 
-    def simulate_single_day(self, month=4, day=15):
-        simulation_start_datetime = datetime(self.simulation_year, month, day)
-        simulation_period = self._SECONDS_IN_A_DAY
-
-        self._run_sumilation(simulation_start_datetime, simulation_period)
 
     @staticmethod
     def get_solar_radiation_and_temperature(current_date_time, environment_conditions):
@@ -237,8 +235,15 @@ class SimulationEnvironment:
             Solving equation 11a analytically
         """
         k_1 = params.A_c * params.F_r_U_l + params.U_st * params.A_st
-        k_2 = params.A_c * I_t * params.F_r_tao_alpha + params.A_c * params.F_r_U_l * T_a - params.m_l_dot * params.C_p * (params.T_l - T_a) + params.U_st * params.A_st * T_a
-        k_3 = ((params.U_st * params.A_st + params.A_c * params.F_r_U_l) / (params.rho * params.C_p * params.V_st))
+        
+        k_2 = (
+                params.A_c * I_t * params.F_r_tao_alpha + params.A_c * params.F_r_U_l * T_a 
+                - params.m_l_dot * params.C_p * (params.T_l - T_a) 
+                + params.U_st * params.A_st * T_a
+            )
+        
+        k_3 = (params.U_st * params.A_st + params.A_c * params.F_r_U_l) / (params.rho * params.C_p * params.V_st)
+
         T_stf = (k_2 - (k_2 - k_1 * T_sti) * math.exp(-k_3 * delta_t)) / k_1
         return T_stf
 
@@ -248,13 +253,13 @@ class SimulationEnvironment:
             Solving equation 11b analytically
         """
         # c1
-        heat_supplied_load = params.m_l_dot * params.C_p * (params.T_l - T_a)
+        c_1 = params.m_l_dot * params.C_p * (params.T_l - T_a)
         # Storage coeff c2
-        storage_loss_coeff = params.U_st * params.A_st
+        c_2 = params.U_st * params.A_st
         # c_3
         c_3 = ((params.U_st * params.A_st) / (params.rho * params.C_p * params.V_st))
-        T_stf = (storage_loss_coeff * T_a - heat_supplied_load 
-                - math.exp(-c_3 * delta_t) * (storage_loss_coeff * T_a - heat_supplied_load - storage_loss_coeff * T_sti)) / (storage_loss_coeff)
+        T_stf = (c_2 * T_a - c_1 
+                - math.exp(-c_3 * delta_t) * (c_2 * T_a - c_1 - c_2 * T_sti)) / (c_2)
         return T_stf
 
     @staticmethod
@@ -262,14 +267,16 @@ class SimulationEnvironment:
         """
             Solving equation 11c analytically
         """
-        # k1
-        k_1 = params.A_c * I_t * params.F_r_tao_alpha + T_a * (params.A_c * params.F_r_U_l +params.m_l_dot * params.C_p + params.U_st * params.A_st)
-        # k_2
-        k_2 = params.A_c * params.F_r_U_l + params.m_l_dot * params.C_p + params.U_st * params.A_st
-        #k_3
-        k_3 = (params.A_c * params.F_r_U_l + params.U_st * params.A_st + params.m_l_dot * params.C_p) / (params.rho * params.C_p * params.V_st)
+        # k_0
+        k_0 = (params.A_c * params.F_r_U_l + params.m_l_dot * params.C_p + params.U_st * params.A_st)
+        
+        # k_1
+        k_1 = ( params.A_c * I_t * params.F_r_tao_alpha + T_a * k_0)
 
-        T_stf = (k_1 - math.exp(- k_3 * delta_t) * (k_1 - k_2 * T_sti)) / k_2
+        #k_2
+        k_2 = (k_0) / (params.rho * params.C_p * params.V_st)
+
+        T_stf = (k_1 - math.exp(-k_2 * delta_t) * (k_1 - k_0 * T_sti)) / k_0
         return T_stf
 
     @staticmethod
@@ -307,18 +314,75 @@ class SimulationEnvironment:
             return self.handle_case_3(params, I_t, T_sti, T_a, delta_t)
         else:
             return self.handle_case_4(params, I_t, T_sti, T_a, delta_t)
+        
+    def plot_single_day(self, STORAGE_WATER_TEMPERATURE, DATE_TIMES):
+        print("DATE_TIME_LEN", len(DATE_TIMES))
+        print("STORAGE_WATER_TEMPERATURE_LEN", len(STORAGE_WATER_TEMPERATURE))
+        plt.figure(figsize=(12, 6))
+        plt.plot(DATE_TIMES, STORAGE_WATER_TEMPERATURE, color='blue', label='Storage Water Temperature')
+
+        # Plotting a line parallel to the x-axis at y=60
+        plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
+
+        # Formatting the x-axis to show hours as integers
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+        plt.gca().xaxis.set_major_locator(mdates.HourLocator())
+
+        # Explicitly set the limits for x-axis to show from 0 to 24
+        plt.xlim(DATE_TIMES[0], DATE_TIMES[-1] + timedelta(hours=1))
+
+        min_temp = min(STORAGE_WATER_TEMPERATURE)
+        plt.ylim(max(min_temp - 30, 0), max(STORAGE_WATER_TEMPERATURE) + 30)
+
+        plt.xlabel('Hour of Day')
+        plt.ylabel('Temperature (°C)')
+        plt.title('Storage Water Temperature Throughout the Day')
+        plt.legend()
+        plt.grid(True)
+
+        # Show x-axis labels for every hour and add labels for the first and last hour manually if they are missing
+        plt.xticks([DATE_TIMES[0] + timedelta(hours=i) for i in range(25)], [f"{i}" for i in range(25)])
+
+        plt.show()
+    
+    def simulate_single_day(self, month=4, day=15):
+        simulation_start_datetime = datetime(self.simulation_year, month, day)
+        simulation_period = self._SECONDS_IN_A_DAY
+
+        STORAGE_WATER_TEMPERATURE, DATE_TIMES =  self._run_sumilation(simulation_start_datetime, simulation_period)
+
+        self.plot_single_day(STORAGE_WATER_TEMPERATURE, DATE_TIMES)
+
+    def simulate_month(self, month=1):
+        simulation_start_datetime = datetime(self.simulation_year, month, 1)
+        # Calculate the number of days in the month
+        days_in_month = calendar.monthrange(self.simulation_year, month)[1]
+        # Calculate the simulation_period in seconds
+        simulation_period = days_in_month * self._SECONDS_IN_A_DAY
+        print("Month Simulation _ start_date_time", simulation_start_datetime)
+        print("Month Simulation _ days in month", days_in_month)
+        print("Month Simulation _ simulation period", simulation_period)
+        x, y = self._run_sumilation(simulation_start_datetime, simulation_period)
+        plt.figure(figsize=(12, 6))
+        print("DATE_TIME_LEN", len(x))
+        print("STORAGE_WATER_TEMPERATURE_LEN", len(y))
+        plt.plot(y, x, color='blue', label='Storage Water Temperature')
+        plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
+
 
     def _run_sumilation(self,  start_datetime, period):
 
         simulation_params = self.create_simulation_parameters()
 
         # Initialize steady state starting temperature
-        temperature_profile = [self._STEADY_STATE_STARTING_TEMPERATURE]
+        STORAGE_WATER_TEMPERATURE = [self._STEADY_STATE_STARTING_TEMPERATURE]
         delta_t = self._SIMULATION_STEP
+        DATE_TIMES = []
         
         for timestep in range(0, period, delta_t):
             # Calculate the current simulation time
             current_date_time = start_datetime + timedelta(seconds=timestep)
+            DATE_TIMES.append(current_date_time)
             
 
             I_t, T_a = self.get_solar_radiation_and_temperature(current_date_time, simulation_params.environment_conditions)
@@ -329,26 +393,106 @@ class SimulationEnvironment:
             # print(is_water_consumed(current_time, water_consumption))
             print("CRRTIME", current_time)
             if not is_consumed:
-                temperature_profile.append(temperature_profile[-1])
+                STORAGE_WATER_TEMPERATURE.append(STORAGE_WATER_TEMPERATURE[-1])
             else:
-                temperature_profile.append(self.get_next_temperature(simulation_params, I_t, temperature_profile[-1], simulation_params.T_l, T_a, delta_t))
-        print(len(temperature_profile))
+                STORAGE_WATER_TEMPERATURE.append(self.get_next_temperature(simulation_params, I_t, STORAGE_WATER_TEMPERATURE[-1], simulation_params.T_l, T_a, delta_t))
+        print(len(STORAGE_WATER_TEMPERATURE))
+        print(len(DATE_TIMES))
+
+        return STORAGE_WATER_TEMPERATURE[1:], DATE_TIMES
+
+        # TODO: Good but needs formatting
+        # print(DATE_TIMES[0], DATE_TIMES[-1])
+        # # Re-importing necessary libraries and re-plotting after reset
 
 
-        # Re-importing necessary libraries and re-plotting after reset
+        # # Plotting the array
+        # plt.figure(figsize=(12, 6))
+        # plt.plot(DATE_TIMES, STORAGE_WATER_TEMPERATURE[1:], color='blue', label='Storage Water Temperature')
+
+        # # Plotting a line parallel to the x-axis at y=60
+        # plt.axhline(y=60, color='red', linestyle='--', label='Line at y=60')
+        # # Setting the x-axis major formatter to display hours and the locator to hourly
+        # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H'))  # Format to show hours and minutes
+        # plt.gca().xaxis.set_major_locator(mdates.HourLocator())  # Locate ticks at every hour
+
+        # plt.ylim(20, max(STORAGE_WATER_TEMPERATURE) + 30)
+        # plt.xlabel('Hour of Day')
+        # plt.ylabel('Temperature (°C)')
+        # plt.title('Storage Water Temperature Throughout the Day')
+        # plt.legend()
+        # plt.grid(True)
+        # plt.show()
+
+        # TODO: This looks good
+        # plt.figure(figsize=(12, 6))
+        # plt.plot(DATE_TIMES, STORAGE_WATER_TEMPERATURE[1:], color='blue', label='Storage Water Temperature')
+
+        # # Plotting a line parallel to the x-axis at y=60
+        # plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
+
+        # # Formatting the x-axis to show hours as integers
+        # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+        # plt.gca().xaxis.set_major_locator(mdates.HourLocator())
+
+        # # Explicitly set the limits for x-axis to show from 0 to 24
+        # plt.xlim(DATE_TIMES[0], DATE_TIMES[-1] + timedelta(hours=1))
+
+        # # If you want y-axis to start from 0 as well
+        # min_temp = min(STORAGE_WATER_TEMPERATURE)
+        # plt.ylim(0 if min_temp > 0 else min_temp, max(STORAGE_WATER_TEMPERATURE) + 30)
+
+        # # If you want the origin on the x-axis to meet the y-axis at 0
+        # plt.gca().spines['bottom'].set_position('zero')
+
+        # plt.xlabel('Hour of Day')
+        # plt.ylabel('Temperature (°C)')
+        # plt.title('Storage Water Temperature Throughout the Day')
+        # plt.legend()
+        # plt.grid(True)
+
+        # # Show x-axis labels for every hour and add labels for the first and last hour manually if they are missing
+        # plt.xticks([DATE_TIMES[0] + timedelta(hours=i) for i in range(25)], [f"{i}" for i in range(25)])
+
+        # plt.show()
+
+        # # TODO: Some interpolation crap
+
+        # from scipy.interpolate import CubicSpline
+        # import numpy as np
+        # import matplotlib.pyplot as plt
+        # import matplotlib.dates as mdates
+
+        # # Assuming DATE_TIMES and STORAGE_WATER_TEMPERATURE contain your data
+        # # Convert DATE_TIMES to a format that can be used for interpolation (i.e., numeric)
+        # time_numeric = mdates.date2num(DATE_TIMES)
+
+        # # Create a cubic spline interpolator
+        # cs = CubicSpline(time_numeric, STORAGE_WATER_TEMPERATURE[1:])
+
+        # # Generate more points for a smoother curve
+        # time_new = np.linspace(time_numeric.min(), time_numeric.max(), 500)
+        # temperature_interpolated = cs(time_new)
+
+        # # Convert the numeric time back to datetime for plotting
+        # date_times_new = mdates.num2date(time_new)
+
+        # # Plotting
+        # plt.figure(figsize=(12, 6))
+        # plt.plot(DATE_TIMES, STORAGE_WATER_TEMPERATURE[1:], label='Original', linestyle='-', marker='o', markersize=4)
+        # plt.plot(date_times_new, temperature_interpolated, label='Interpolated', linestyle='-', color='orange')
+
+        # # Set hourly ticks on x-axis and format labels to show hours
+        # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+        # plt.gca().xaxis.set_major_locator(mdates.HourLocator())
+
+        # plt.xlabel('Hour of Day')
+        # plt.ylabel('Temperature (°C)')
+        # plt.title('Storage Water Temperature Throughout the Day')
+        # plt.legend()
+        # plt.grid(True)
+        # plt.show()
 
 
-        # Plotting the array
-        plt.figure(figsize=(10, 6))
-        plt.plot(temperature_profile, color='blue', label='Array Values')
 
-        # Plotting a line parallel to the x-axis at y=60
-        plt.axhline(y=60, color='red', linestyle='--', label='Line at y=60')
 
-        plt.ylim(20, max(temperature_profile) + 30)
-        plt.xlabel('Index')
-        plt.ylabel('Value')
-        plt.title('Plot with a Line Parallel to the X-axis at y=60')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
