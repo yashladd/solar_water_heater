@@ -12,9 +12,9 @@ import pandas as pd
 
 # Define a namedtuple with all required parameters
 SimulationParameters = namedtuple('SimulationParameters', [
-    'A_c', 'F_r_tao_alpha', 'F_r_U_l',
+    'A_c', 'V_st', 'F_r_tao_alpha', 'F_r_U_l',
     'm_l_dot', 'C_p', 'T_l', 'rho', 'consumption_pattern',
-    'U_st', 'A_st', 'V_st', 'environment_conditions'
+    'U_st', 'A_st',  'environment_conditions'
 ])
 
 
@@ -207,6 +207,7 @@ class SimulationEnvironment:
         # print("Updated params")
         params = SimulationParameters(
             A_c=self._collector_area,
+            V_st=self._storage_tank_volume,
             F_r_tao_alpha=self.solar_collector.F_r_tao_alpha,
             F_r_U_l=self.solar_collector.F_r_U_l,
             m_l_dot=self.load.m_l_dot,
@@ -216,7 +217,6 @@ class SimulationEnvironment:
             consumption_pattern=self.load.consumption_pattern,
             U_st=self.storage_tank.U_st,
             A_st=self.storage_tank.A_st,
-            V_st=self._storage_tank_volume,
             environment_conditions=self.environment_conditions
         )
         return params

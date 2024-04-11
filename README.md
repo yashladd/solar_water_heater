@@ -27,7 +27,7 @@ For a given solar collector-storage system, parameters such as **collector area*
 - $T_{st}$ - storage temperature $°C$
 - $T_a$ - ambient temperature, $°C$
 - $T_L$ - desired load (hot water) temperature, $°C$
-- $U_{st}$  -storage heat loss coefficient, $W/m^2°C$
+- $U_{st}$ - storage heat loss coefficient, $W/m^2°C$
 - $A_{st}$ surface area of the storage tank, $m^2$
 - $q_s$ - solar useful heat gain rate, $W$
 - $q_{Ls}$ - load met by solar energy, $W$
@@ -50,3 +50,7 @@ expressed as
 
 $$\frac{\rho C_p V_{st}}{dt} = q_s - q_{Ls} - q_{stl}
 $$
+
+where the rate of storage loss ($q_{stl}$) is estimated to be
+
+$$$$
