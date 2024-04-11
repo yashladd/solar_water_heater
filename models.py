@@ -20,6 +20,9 @@ SimulationParameters = namedtuple('SimulationParameters', [
 
 
 class Load:
+    """
+        Defines the load properties, consumption pattern for the scenario and calculates the mass flow rate
+    """
     def __init__(self, config) -> None:
         # Desired hot water temperature during demand in °C
         self.T_l = config['desired_temperature']
@@ -56,25 +59,10 @@ class Load:
         return total_kg_per_day/total_seconds if total_seconds > 0 else 0
 
 
-
-class Environment:
-    def __init__(self, lat=18.53, lon=73.85, surface_tilt=0, tz='Asia/Kolkata') -> None:
-        self.lat = lat
-        self.lon = lon
-        # TODO: Figure out angle now lets work with poa_direct from pvlib
-        self.weather_conditions, _, _ = get_pvgis_hourly(
-            latitude=lat, 
-            longitude=lon,
-            start=2006,
-            end=2006,
-            components=False,
-            surface_tilt=surface_tilt
-        )
-        self.weather_conditions = self.weather_conditions.tz_convert(tz)
-        self.weather_conditions.index = self.weather_conditions.index.floor('h')
-
-
 class SolarCollector:
+    """
+        Models the properties of solar collector 
+    """
     def __init__(
             self, area, config
         ) -> None:
@@ -89,6 +77,9 @@ class SolarCollector:
 
 
 class Storage:
+    """
+        Models the & calculates the properties of the storage tank based its charachteristics
+    """
     def __init__(self, volume, config) -> None:
         
         # Ration of height to diameter
@@ -140,24 +131,59 @@ class EnvironmentConditionsError(Exception):
 
 
 class SimulationEnvironment:
-    # delta 
+    """
+        Main logic of simulating The temerature of the stroage water by varying:
+            1. Solar Collector Area
+            2. Storage Tank Volume
+
+        Creates Simulation for:
+            1. Single Day 
+            2. Entire Month
+            3. Entire Year
+    """    
     _SIMULATION_STEP = 300
     _SECONDS_IN_A_DAY = 24 * 60 * 60
     _STEADY_STATE_STARTING_TEMPERATURE = 69.5 
 
-    def __init__(self, collector_area, storage_tank_voume, config_file) -> None:
+    def __init__(self, collector_area, storage_tank_volume, config_file) -> None:
+        self.config_file = config_file
 
-        with open(config_file) as f:
+        with open(self.config_file) as f:
             config = json.load(f)
+
+        self._collector_area = collector_area
+        self._storage_tank_volume = storage_tank_volume
 
         self.environment = config['environment']
         self.simulation_year = config['simulation_year']
         self.solar_collector = SolarCollector(collector_area, config['solar_collector'])
-        self.storage_tank = Storage(storage_tank_voume, config['storage_tank'])
+        self.storage_tank = Storage(storage_tank_volume, config['storage_tank'])
         self.load = Load(config['load_profile'])
         self.environment_conditions = self.get_environment_conditions()
-    
+        self.simulation_params = self.create_simulation_parameters()
+
+    @property
+    def collector_area(self):
+        return self._collector_area
+
+    @collector_area.setter
+    def collector_area(self, value):
+        self._collector_area = value
+        self.simulation_params = self.create_simulation_parameters()
+
+    @property
+    def storage_tank_volume(self):
+        return self._storage_tank_volume
+
+    @storage_tank_volume.setter
+    def storage_tank_volume(self, value):
+        self._storage_tank_volume = value
+        self.simulation_params = self.create_simulation_parameters()
+
     def get_environment_conditions(self):
+        """
+            Get the Solar radiation and ambient temperature for the current location according to config_file provided
+        """
         try:
             data, _, _ = get_pvgis_hourly(
             latitude=self.environment['latitude'], 
@@ -178,8 +204,9 @@ class SimulationEnvironment:
 
     def create_simulation_parameters(self):
         """Create a SimulationParameters object encapsulating all necessary simulation parameters."""
+        # print("Updated params")
         params = SimulationParameters(
-            A_c=self.solar_collector.A_c,
+            A_c=self._collector_area,
             F_r_tao_alpha=self.solar_collector.F_r_tao_alpha,
             F_r_U_l=self.solar_collector.F_r_U_l,
             m_l_dot=self.load.m_l_dot,
@@ -189,7 +216,7 @@ class SimulationEnvironment:
             consumption_pattern=self.load.consumption_pattern,
             U_st=self.storage_tank.U_st,
             A_st=self.storage_tank.A_st,
-            V_st=self.storage_tank.V_st,
+            V_st=self._storage_tank_volume,
             environment_conditions=self.environment_conditions
         )
         return params
@@ -197,12 +224,13 @@ class SimulationEnvironment:
 
     @staticmethod
     def get_solar_radiation_and_temperature(current_date_time, environment_conditions):
-    
+        """
+            Get I_t and T_a at the simulation instant
+        """
         # print(current_date_time)
 
         # Determine the hour in which current_date_time lies, This floors the time to the start of the current hour
         hour_start = current_date_time.replace(minute=0, second=0, microsecond=0)
-        # print(hour_start)
         # Check if the hour_start exceeds the dataframe's range
         # If it does, use the last available hour in the dataframe
         if hour_start not in environment_conditions.index:
@@ -318,6 +346,9 @@ class SimulationEnvironment:
     
     @staticmethod
     def plot_single_day(storage_temperature, date_times):
+        """
+            Plots the temeperature profile for single day simulation 
+        """
         print("DATE_TIME_LEN", len(date_times))
         print("STORAGE_WATER_TEMPERATURE_LEN", len(storage_temperature))
         plt.figure(figsize=(12, 6))
@@ -325,6 +356,7 @@ class SimulationEnvironment:
 
         # Plotting a line parallel to the x-axis at y=60
         plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
+        plt.axhline(y=100, color='red', linestyle='--', label='Limiting Temerature Line = 100°C')
 
         # Formatting the x-axis to show hours as integers
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H'))
@@ -334,7 +366,7 @@ class SimulationEnvironment:
         plt.xlim(date_times[0], date_times[-1] + timedelta(hours=1))
 
         min_temp = min(storage_temperature)
-        plt.ylim(max(min_temp - 30, 0), max(storage_temperature) + 30)
+        plt.ylim(max(min_temp - 30, 0), max(105, max(storage_temperature)))
 
         plt.xlabel('Hour of Day')
         plt.ylabel('Temperature (°C)')
@@ -349,11 +381,16 @@ class SimulationEnvironment:
     
     @staticmethod
     def plot_month(storage_temperature, date_times):
+        """
+            Plots the temeperature profile for month's simulation 
+        """
         plt.figure(figsize=(12, 6))
         plt.plot(date_times, storage_temperature, color='blue', label='Storage Water Temperature')
 
         # Plotting a line parallel to the x-axis at y=60
         plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
+        plt.axhline(y=100, color='red', linestyle='--', label='Limiting Temerature Line = 100°C')
+
         # Setting the x-axis to show each day of the month
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d'))  # Show day of the month
         plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))  # One tick per day
@@ -362,6 +399,8 @@ class SimulationEnvironment:
         plt.xlabel('Day of Month')
         plt.ylabel('Temperature (°C)')
         plt.title('Storage Temperature Throughout the Month')
+        min_temp = min(storage_temperature)
+        plt.ylim(max(min_temp - 30, 0), max(105, max(storage_temperature)))
 
         # Enabling grid for better readability
         plt.grid(True)
@@ -376,20 +415,26 @@ class SimulationEnvironment:
     # TODO: CAN this be made nicer?
     @staticmethod
     def plot_year(storage_temperature, date_times):
+        """
+            Plots the temeperature profile simulation of the entire year
+        """
         plt.figure(figsize=(12, 6))
         plt.plot(date_times, storage_temperature, color='blue', label='Storage Water Temperature')
 
         # Plotting a line parallel to the x-axis at y=60
         plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
+        plt.axhline(y=100, color='red', linestyle='--', label='Limiting Temerature Line = 100°C')
         # Setting the x-axis to show each day of the month
         plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b'))  # One tick per day
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b'))
 
         # Adding labels and title
-        plt.xlabel('Day of Month')
+        plt.xlabel('Month')
         plt.ylabel('Temperature (°C)')
         plt.title('Storage Temperature Throughout the Year')
         plt.xlim(date_times[0], date_times[-1])
+        min_temp = min(storage_temperature)
+        plt.ylim(max(min_temp - 30, 0), max(105, max(storage_temperature)))
 
         # Enabling grid for better readability
         plt.grid(True)
@@ -400,36 +445,6 @@ class SimulationEnvironment:
 
         # Show plot
         plt.show()
-
-
-    # @staticmethod
-    # def plot_year(storage_temperature, date_times):
-    #     plt.figure(figsize=(18, 9))  # Larger figure size
-    #     smoothed_temperature = pd.Series(storage_temperature).rolling(window=48).mean()  # Smooth the data
-
-    #     plt.plot(date_times, smoothed_temperature, color='blue', label='Smoothed Storage Water Temperature', linewidth=1)
-    #     plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
-
-    #     # Improve readability of x-axis labels
-    #     plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
-    #     plt.gca().xaxis.set_minor_locator(mdates.WeekdayLocator())
-    #     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-
-    #     # Set grid and labels
-    #     plt.xlabel('Month')
-    #     plt.ylabel('Temperature (°C)')
-    #     plt.title('Storage Temperature Throughout the Year')
-    #     plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
-        
-    #     # Set axis limits
-    #     plt.xlim(date_times[0], date_times[-1])
-        
-    #     # Add legend
-    #     plt.legend()
-        
-    #     # Show plot
-    #     plt.show()
-
 
 
     def simulate_single_day(self, month=4, day=15):
@@ -469,7 +484,7 @@ class SimulationEnvironment:
 
     def _run_sumilation(self,  start_datetime, period, year=False):
 
-        simulation_params = self.create_simulation_parameters()
+        simulation_params = self.simulation_params
 
         # Initialize steady state starting temperature
         storage_water_temerature = [self._STEADY_STATE_STARTING_TEMPERATURE]
