@@ -495,8 +495,7 @@ class SimulationEnvironment:
             # Calculate the current simulation time
             current_date_time = start_datetime + timedelta(seconds=timestep)
             date_times.append(current_date_time)
-            
-
+            # Get current solar radiation and ambient temperature
             I_t, T_a = self.get_solar_radiation_and_temperature(current_date_time, simulation_params.environment_conditions)
             # print(I_t, T_a)
 
