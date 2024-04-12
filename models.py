@@ -326,14 +326,30 @@ class SimulationEnvironment:
         if int(I_t) == 0:
             return 0.0
         return params.A_c * (I_t * params.F_r_tao_alpha - params.F_r_U_l * (T_st - T_a))
+    
+    @staticmethod
+    def handle_case_5(q_s, params, I_t, T_sti, T_a, delta_t):
+        if q_s <= 0:
+            exp = math.exp((params.U_st * params.A_st)/ (params.rho * params.C_p * params.V_st))
+            return T_a * (1 - exp) + T_sti * exp
+        else:
+            k_1 = params.A_c * I_t * params.F_r_tao_alpha 
+            k_2 = params.A_c * params.F_r_U_l  + params.U_st * params.A_st
+
+            T_stf = (
+                (k_1 + T_a * k_2 - math.exp(-k_2 * delta_t / (params.rho * params.C_p * params.V_st)) * (k_1 + T_a * k_2 - T_sti * k_2)) / (k_2)
+            )
+            return T_stf
 
     # @staticmethod
-    def get_next_temperature(self, params, I_t, T_sti, T_l, T_a, delta_t):
+    def get_next_temperature(self, is_consumed, params, I_t, T_sti, T_l, T_a, delta_t):
         """
             Solve the differential equations from the energy balance of the tank
         """
         q_s = self.get_solar_useful_gain_rate(params, I_t, T_sti, T_a)
-        # q_s = q_s if q_s > 0 else 0.0
+
+        if not is_consumed:
+            return self.handle_case_5(q_s, params, I_t, T_sti, T_a, delta_t)
 
         # Case 1
         if T_sti > T_l and q_s > 0:
@@ -446,10 +462,6 @@ class SimulationEnvironment:
     def plot_energy_bar_graph(formatted_total_energy, formatted_energy_auxiliary):
         """
         Plot a bar graph of the total energy required and the energy met by auxiliary.
-        Also, display the solar fraction as a legend.
-
-        :param total_energy: float, total energy required.
-        :param energy_auxiliary: float, energy met by auxiliary.
         """
         # Calculate solar fraction
         # Extract numerical values for plotting
@@ -689,13 +701,13 @@ class SimulationEnvironment:
             # print(is_water_consumed(current_time, water_consumption))
             # print("CRRTIME", current_time)
             if not is_consumed:
-                storage_water_temerature.append(storage_water_temerature[-1])
+                # storage_water_temerature.append(storage_water_temerature[-1])
                 total_energy_consumed.append(0)
                 energy_met_by_auxiliary.append(0)
             else:
-                storage_water_temerature.append(self.get_next_temperature(simulation_params, I_t, storage_water_temerature[-1], simulation_params.T_l, T_a, delta_t))
                 total_energy_consumed.append(self.calculate_total_energy_rate(simulation_params, T_a) * delta_t)
                 aux = self.calculate_energy_rate_met_by_auxiliary(simulation_params, storage_water_temerature[-1], T_a) * delta_t
                 energy_met_by_auxiliary.append(aux)
+            storage_water_temerature.append(self.get_next_temperature(is_consumed, simulation_params, I_t, storage_water_temerature[-1], simulation_params.T_l, T_a, delta_t))
 
         return storage_water_temerature[1:], total_energy_consumed, energy_met_by_auxiliary, date_times
