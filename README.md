@@ -53,20 +53,9 @@ which influences the system size and performance. In my simulation, I focus on m
 Energy balance of a well mixed storage tank over a time horizon can be
 expressed as
 
-<!-- <div align="center">
+**Equation (1)**
 
-$$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt}  = q_s - q_{Ls} - q_{stl}$$ 
-<span style="float: right;">(1)</span>
-
-</div> -->
-
-<div align="center">
-
-| $$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$ | (1) |
-|:-------------------------------------------------------------------------------:|----:|
-
-</div>
-
+$$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$
 
 
 <!-- $$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt}  = q_s - q_{Ls} - q_{stl}$$ -->
