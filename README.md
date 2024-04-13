@@ -101,7 +101,7 @@ For instance when $T_{st} \geq T_L$ and $q_s > 0$, the analalytical equation der
 
 
 $$
-\left[\frac{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{stf} - T_a) - \dot{m}_L C_p (T_{l} - T_a) - U_{st} A_{st}(T_{stf} - T_a)}{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{sti} - T_a) - \dot{m}_L C_p (T_{l} - T_a) - U_{st} A_{st}(T_{stf} - T_a)}\right] = \exp \left(-\frac{(A_c F_{R} U_{L} + U_{st} A_{st}) \cdot t}{\rho C_p V_{st}}\right)
+\frac{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{stf} - T_a) - \dot{m}_L C_p (T_{l} - T_a) - U_{st} A_{st}(T_{stf} - T_a)}{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{sti} - T_a) - \dot{m}_L C_p (T_{l} - T_a) - U_{st} A_{st}(T_{stf} - T_a)} = \exp \left(-\frac{(A_c F_{R} U_{L} + U_{st} A_{st}) \cdot t}{\rho C_p V_{st}}\right)
 $$
 
 Equations are similartly derived for all the scenarios mentioned above and their analytical solutions are used to model the storage tank temperature $T_{st}$
