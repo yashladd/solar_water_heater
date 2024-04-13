@@ -43,11 +43,13 @@ For a given solar collector-storage system, parameters such as **collector area*
 <!-- - $\dot{m_r}$ - makeup water mass flow rate, $kg/s$ -->
 <!-- - $\dot{m_s}$ - mass flow rate from storage, $kg/s$ -->
 
-**Storage tank temperature** ($T_{st}$) is an important parameter
-which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different timeframes—ranging from a single day to a month, or even spanning an entire year. The total collector area $A_c$ and storage tnak volume $V_{st}$ and the solar fraction $F$,  are important from the performance and cost optimization point of view. 
-
 
 <!-- The temperature of the storage tank ($T_{st}$) is a critical factor affecting both the sizing of the system and its operational efficiency. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different timeframes—ranging from a single day to a month, or even spanning an entire year. Key parameters such as the total area of the solar collector (\(A_c\)), the volume of the storage tank (\(V_{st}\)), and the solar fraction (\(F\)) are central to optimizing the system for both performance and cost-effectiveness. -->
+<!-- $$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt}  = q_s - q_{Ls} - q_{stl}$$ -->
+<!-- $TODO$ fix the link -->
+## Simulating the Storage tank temerature $T_{st}$
+**Storage tank temperature** ($T_{st}$) is an important parameter
+which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different timeframes—ranging from a single day to a month, or even spanning an entire year. The total collector area $A_c$ and storage tnak volume $V_{st}$ and the solar fraction $F$,  are important from the performance and cost optimization point of view. 
 
 
 Energy balance of a well mixed storage tank over a time horizon can be
@@ -56,10 +58,6 @@ expressed as
 **Equation (1)**
 
 $$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$
-
-
-<!-- $$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt}  = q_s - q_{Ls} - q_{stl}$$ -->
-<!-- $TODO$ fix the link -->
 
 Here $q_s$, the solar useful heat gain rate, is calculated ([Duffie and Huffman](https://google.com)) as 
 
@@ -89,13 +87,29 @@ The rate of storage loss ($q_{stl}$) is estimated to be
 $$q_{stl} = U_{st} \cdot A_{st} \cdot (T_{st} - T_a)$$ 
 
 
-During demand, four different cases arise:
+During **demand** for hot water, four different cases arise:
 - $T_{st} \geq T_L$ and $q_s > 0$
 - $T_{st} \geq T_L$ and $q_s < 0$
 - $T_{st} < T_L$ and $q_s > 0$
 - $T_{st} < T_L$ and $q_s < 0$
 
+When there is **no** demand, $q_{Ls} = 0$ naturally, and the temerature $T_{st}$ is models only based on $q_s$ and $q_{stl}$ 
+
 Using these equations, at the current timestep $t$, depending on the state of the system, Equation $(1)$ can be integrated over the time step $t$ and substituting the appropriate values of $q_s$, $q_{Ls}$ and $q_{stl}$. The final temerature of the storage tank $T_{stf}$ is calculated when the initial temeprature at the start of the time step $t$ is $T_{sti}$. 
+
+For instance when $T_{st} \geq T_L$ and $q_s > 0$, the analalytical equation derived by integrating Equation (1) and substituting appropriate values, is given by:
+
+
+$$
+\left[\frac{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{stf} - T_a) - \dot{m}_L C_p (T_{l} - T_a) - U_{st} A_{st}(T_{stf} - T_a)}{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{sti} - T_a) - \dot{m}_L C_p (T_{l} - T_a) - U_{st} A_{st}(T_{stf} - T_a)}\right] = \exp \left(-\frac{(A_c F_{R} U_{L} + U_{st} A_{st}) \cdot t}{\rho C_p V_{st}}\right)
+$$
+
+Equations are similartly derived for all the scenarios mentioned above and their analytical solutions are used to model the storage tank temperature $T_{st}$
+
+## Calculating Solar Fraction
+
+
+
 
 In my simulation, historical hourly weather data is utilized to derive values for solar irradiance ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector.
 
