@@ -1,0 +1,47 @@
+{
+    "simulation_year": 2006,
+    "environment": {
+        "latitude": 40.67,
+        "longitude": -111.82,
+        "timezone": "America/Denver"
+    },
+    "solar_collector": {
+        "f_r_tao_alpha": 0.675,
+        "f_r_u_l": 5.656,
+        "tilt": 33
+    },
+    "load_profile": {
+        "litres_per_day": 4500,
+        "water_density": 998,
+        "specific_heat_water": 4180,
+        "desired_temperature": 60,
+        "consumption_pattern": [
+            {
+                "start": "06:00",
+                "end": "08:00"
+            },
+            {
+                "start": "10:00",
+                "end": "11:00"
+            },
+            {
+                "start": "12:00",
+                "end": "13:00"
+            },
+            {
+                "start": "14:00",
+                "end": "18:00"
+            }
+        ]
+    },
+    "storage_tank": {
+        "type": "Cylindrical",
+        "height_to_diameter_ratio": 1,
+        "wall_material": "Mild steel",
+        "storage_wall_thicknes": 0.006,
+        "thermal_conductivity_wall": 50,
+        "insulation_material": "Glass wool",
+        "insulation_thickness": 0.2,
+        "insulation_thermal_conductivity": 0.04
+    }
+}

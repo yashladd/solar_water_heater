@@ -187,16 +187,17 @@ class SimulationEnvironment:
         """
         try:
             data, _, _ = get_pvgis_hourly(
-            latitude=self.environment['latitude'], 
-            longitude=self.environment['longitude'],
-            start=self.simulation_year,
-            end=self.simulation_year,
-            components=False,
-            surface_tilt=self.solar_collector.tilt
-        )
+                latitude=self.environment['latitude'], 
+                longitude=self.environment['longitude'],
+                start=self.simulation_year,
+                end=self.simulation_year,
+                components=False,
+                surface_tilt=self.solar_collector.tilt
+            )
+            # Convert to location's timezone to index later
             data = data.tz_convert(self.environment['timezone'])
-            # Floor the miutes to nearest hour for simulation
-            data.index = data.index.floor('h')
+            # Floor the miutes to nearest hour for simulation DST values are missing!
+            data.index = data.index.floor('h', ambiguous='NaT', nonexistent='NaT')
             # Remove the timezone from the index for simulaiton 
             data.index = data.index.tz_localize(None)
             return data
@@ -228,12 +229,11 @@ class SimulationEnvironment:
         """
             Get I_t and T_a at the simulation instant
         """
-        # print(current_date_time)
-
         # Determine the hour in which current_date_time lies, This floors the time to the start of the current hour
         hour_start = current_date_time.replace(minute=0, second=0, microsecond=0)
         # Check if the hour_start exceeds the dataframe's range
         # If it does, use the last available hour in the dataframe
+        # DAYLIGHT SAVINGS :|
         if hour_start not in environment_conditions.index:
             hour_start = environment_conditions.index[-1]
 
@@ -254,9 +254,8 @@ class SimulationEnvironment:
             
             # Check if current_time falls within the consumption period
             if start_time <= current_time < end_time:
-                # print("REACHED")
                 is_water_consumed = True
-                break  # Exit the loop if a matching period is found
+                break
         return is_water_consumed
     
     @staticmethod
@@ -341,7 +340,6 @@ class SimulationEnvironment:
             )
             return T_stf
 
-    # @staticmethod
     def get_next_temperature(self, is_consumed, params, I_t, T_sti, T_l, T_a, delta_t):
         """
             Solve the differential equations from the energy balance of the tank
@@ -369,11 +367,10 @@ class SimulationEnvironment:
         return m_l_dot * C_p * (T_l - T_a) 
     
     @staticmethod
-    def calculate_energy_rate_met_by_auxiliary(params, T_st, T_a):
+    def calculate_auxiliary_energy_rate(params, T_st, T_a):
         m_l_dot = params.m_l_dot
         C_p = params.C_p
         T_l = params.T_l
-        # print("AUX_CALC" + " T_ST T_l", T_st, T_a)
         # Total Energy will be met by Solar 
         if T_st > T_l: return 0
         # Total energy requirement
@@ -415,7 +412,7 @@ class SimulationEnvironment:
         plt.show()
 
     @staticmethod
-    def plot_solar_radiation(df, month=None, day=None):
+    def plot_solar_radiation(year, df, month=None, day=None):
         """
         Plot the poa_global against time from a pandas DataFrame.
         
@@ -425,7 +422,7 @@ class SimulationEnvironment:
         """
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index)
-        df = df[df.index.year <= df.index.year[0]]
+        df = df[df.index.year == year]
         plt.figure(figsize=(12, 6))
         # Filter data based on the month and day provided
         if month is not None and day is not None:
@@ -445,11 +442,10 @@ class SimulationEnvironment:
             df_filtered = df
             plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
             plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-        print(df_filtered.index)
         # Plotting
         plt.plot(df_filtered.index, df_filtered['poa_global'], label='poa_global')
         plt.xlabel('Time')
-        plt.ylabel('Solar Radiation on tilted surface I_t')
+        plt.ylabel('Solar Radiation on tilted surface (I_t) W/m^2 ')
         plt.title('Solar radiation Over Time')
         plt.xlim(df_filtered.index[0], df_filtered.index[-1])
         plt.ylim(bottom=0)
@@ -480,40 +476,14 @@ class SimulationEnvironment:
         legend_handle = Line2D([0], [0], linestyle='none', marker='s', markerfacecolor='yellow', markeredgewidth=0.0)
 
         # Add legend to the plot with custom handle for the solar fraction
-        ax.legend(handles=[legend_handle], labels=[f'Solar Fraction: {solar_fraction:.3f}'], handlelength=1, handletextpad=0.5)
-
-
-        # Show the plot
+        ax.legend(handles=[legend_handle], labels=[f'Solar Fraction: {solar_fraction:.3f}'], handlelength=1, handletextpad=0.3)
         plt.show()
-
-        # # Create bar graph
-        # plt.figure(figsize=(10, 6))
-        # bar_width = 0.35
-        # index = [0, 1]
-        # energies = [total_energy_value, energy_auxiliary_value]
-        # labels = ['Total Energy Required', 'Energy Met by Auxiliary']
-
-        # plt.bar(index, energies, bar_width, label=f'Solar Fraction: {solar_fraction:.3f}')
-
-        # # Add labels, title, and legend
-        # plt.xlabel('Category')
-        # plt.ylabel('Energy (' + formatted_total_energy.split()[1] + ')')
-        # plt.title('Energy Comparison with Solar Fraction')
-        # plt.xticks(index, labels)
-        # plt.legend()
-
-        # # Show plot
-        # plt.tight_layout()
-        # plt.show()
-
 
     @staticmethod
     def plot_single_day(storage_temperature, date_times):
         """
             Plots the temeperature profile for single day simulation 
         """
-        print("DATE_TIME_LEN", len(date_times))
-        print("STORAGE_WATER_TEMPERATURE_LEN", len(storage_temperature))
         plt.figure(figsize=(12, 6))
         plt.plot(date_times, storage_temperature, color='blue', label='Storage Water Temperature')
 
@@ -539,7 +509,6 @@ class SimulationEnvironment:
 
         # Show x-axis labels for every hour and add labels for the first and last hour manually if they are missing
         plt.xticks([date_times[0] + timedelta(hours=i) for i in range(25)], [f"{i}" for i in range(25)])
-
         plt.show()
     
 
@@ -565,18 +534,11 @@ class SimulationEnvironment:
         plt.title('Storage Temperature Throughout the Month')
         min_temp = min(storage_temperature)
         plt.ylim(max(min_temp - 30, 0), max(105, max(storage_temperature)))
-
-        # Enabling grid for better readability
         plt.grid(True)
         plt.xlim(date_times[0], date_times[-1])
-
-        # Adding legend
         plt.legend()
-
-        # Show plot
         plt.show()
 
-    # TODO: CAN this be made nicer?
     @staticmethod
     def plot_year(storage_temperature, date_times):
         """
@@ -603,7 +565,7 @@ class SimulationEnvironment:
         plt.show()
     
     @staticmethod
-    def format_energy_values(energy_auxiliary, total_energy):
+    def format_energy_values(total, auxiliary):
         # Define the energy unit thresholds
         thresholds = {
             'J': 1e3,      # Up to 1,000 J, use J
@@ -611,15 +573,15 @@ class SimulationEnvironment:
             'MJ': 1e9,     # Up to 1,000,000,000 J, use MJ
             'GJ': 1e12,    # Greater than 1,000,000,000,000 J, use GJ
         }
-        max_value = max(total_energy, energy_auxiliary)
+        max_value = max(auxiliary, total)
         unit = 'J'  # Default to J
         for key, value in thresholds.items():
             if max_value < value:
                 unit = key
                 break
         factor = 1e3 ** ('J kJ MJ GJ'.split().index(unit))
-        total_energy_converted = total_energy / factor
-        energy_auxiliary_converted = energy_auxiliary / factor
+        total_energy_converted = total / factor
+        energy_auxiliary_converted = auxiliary / factor
         total_energy_formatted = f"{total_energy_converted:.3f} {unit}"
         energy_auxiliary_formatted = f"{energy_auxiliary_converted:.3f} {unit}"
         return total_energy_formatted, energy_auxiliary_formatted
@@ -628,16 +590,16 @@ class SimulationEnvironment:
     def simulate_single_day(self, month=4, day=15):
         simulation_start_datetime = datetime(self.simulation_year, month, day)
         simulation_period = self._SECONDS_IN_A_DAY
+        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period)
 
-        storage_temperature, total_energy_consumed, energy_met_by_auxiliary, date_times =  self._run_sumilation(simulation_start_datetime, simulation_period)
-        total, aux  = self.format_energy_values(sum(energy_met_by_auxiliary), sum(total_energy_consumed))
-        print("AUXILIARY ENERGY",  total)
-        print("TOTAL_ENERGY", aux)
-        print(f'THE SOLAR FRACTION IS: {(1 - sum(energy_met_by_auxiliary)/sum(total_energy_consumed)):.3f}')
-
-        self.plot_solar_radiation(self.environment_conditions, month=month, day=day)
+        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
+        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
+        print("AUXILIARY ENERGY",  total_energy_str)
+        print("TOTAL_ENERGY", aux_energy_str)
+        print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
         self.plot_single_day(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total, aux)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
 
     def simulate_month(self, month=1):
         simulation_start_datetime = datetime(self.simulation_year, month, 1)
@@ -645,17 +607,18 @@ class SimulationEnvironment:
         days_in_month = calendar.monthrange(self.simulation_year, month)[1]
         # Calculate the simulation_period in seconds
         simulation_period = days_in_month * self._SECONDS_IN_A_DAY
-        print("Month Simulation _ start_date_time", simulation_start_datetime)
-        print("Month Simulation _ days in month", days_in_month)
-        print("Month Simulation _ simulation period", simulation_period)
-        storage_temperature, total_energy_consumed, energy_met_by_auxiliary, date_times = self._run_sumilation(simulation_start_datetime, simulation_period)
-        total, aux  = self.format_energy_values(sum(energy_met_by_auxiliary), sum(total_energy_consumed))
-        print("AUXILIARY ENERGY",  total)
-        print("TOTAL_ENERGY", aux)
-        print(f'THE SOLAR FRACTION IS: {(1 - sum(energy_met_by_auxiliary)/sum(total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.environment_conditions, month=1)
+        # print("Month Simulation _ start_date_time", simulation_start_datetime)
+        # print("Month Simulation _ days in month", days_in_month)
+        # print("Month Simulation _ simulation period", simulation_period)
+        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period)
+        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
+        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
+        print("AUXILIARY ENERGY",  total_energy_str)
+        print("TOTAL_ENERGY", aux_energy_str)
+        print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year, self.environment_conditions, month=month)
         self.plot_month(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total, aux)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
 
 
     def simulate_entire_year(self):
@@ -667,26 +630,29 @@ class SimulationEnvironment:
                 return 365 * 24 * 60 * 60
         simulation_start_datetime = datetime(self.simulation_year, 1, 1)
         simulation_period = get_seconds_in_a_year(self.simulation_year)
-        storage_temperature, total_energy_consumed, energy_met_by_auxiliary, date_times = self._run_sumilation(simulation_start_datetime, simulation_period, year=True)
-        total, aux  = self.format_energy_values(sum(energy_met_by_auxiliary), sum(total_energy_consumed))
-        print("AUXILIARY ENERGY",  total)
-        print("TOTAL_ENERGY", aux)
-        print(f'THE SOLAR FRACTION IS: {(1 - sum(energy_met_by_auxiliary)/sum(total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.environment_conditions)
+        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period, year=True)
+        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
+        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
+        print("AUXILIARY ENERGY",  total_energy_str)
+        print("TOTAL_ENERGY", aux_energy_str)
+        print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year, self.environment_conditions, month=1)
+        self.plot_solar_radiation(self.simulation_year, self.environment_conditions)
         self.plot_year(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total, aux)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
+
 
 
     def _run_sumilation(self,  start_datetime, period, year=False):
-
+        # Get the simulation params
         simulation_params = self.simulation_params
 
-        # Initialize steady state starting temperature
+        # Initialize steady state starting temperature and reusults
         storage_water_temerature = [self._STEADY_STATE_STARTING_TEMPERATURE]
         delta_t = self._SIMULATION_STEP if not year else 15 * 60
         date_times = []
-        total_energy_consumed = []
-        energy_met_by_auxiliary = []
+        total_energy_array = []
+        auxiliary_energy_array = []
         
         for timestep in range(0, period, delta_t):
             # Calculate the current simulation time
@@ -694,20 +660,11 @@ class SimulationEnvironment:
             date_times.append(current_date_time)
             # Get current solar radiation and ambient temperature
             I_t, T_a = self.get_solar_radiation_and_temperature(current_date_time, simulation_params.environment_conditions)
-            # print(I_t, T_a)
-            # print("DELTA_T", delta_t)
+            # Get only time H:M to check consumption
             current_time = current_date_time.time()
             is_consumed = self.is_water_consumed(current_time, simulation_params.consumption_pattern)
-            # print(is_water_consumed(current_time, water_consumption))
-            # print("CRRTIME", current_time)
-            if not is_consumed:
-                # storage_water_temerature.append(storage_water_temerature[-1])
-                total_energy_consumed.append(0)
-                energy_met_by_auxiliary.append(0)
-            else:
-                total_energy_consumed.append(self.calculate_total_energy_rate(simulation_params, T_a) * delta_t)
-                aux = self.calculate_energy_rate_met_by_auxiliary(simulation_params, storage_water_temerature[-1], T_a) * delta_t
-                energy_met_by_auxiliary.append(aux)
+            total_energy_array.append(0 if not is_consumed else self.calculate_total_energy_rate(simulation_params, T_a) * delta_t)
+            auxiliary_energy_array.append(0 if not is_consumed else self.calculate_auxiliary_energy_rate(simulation_params, storage_water_temerature[-1], T_a) * delta_t)
             storage_water_temerature.append(self.get_next_temperature(is_consumed, simulation_params, I_t, storage_water_temerature[-1], simulation_params.T_l, T_a, delta_t))
 
-        return storage_water_temerature[1:], total_energy_consumed, energy_met_by_auxiliary, date_times
+        return storage_water_temerature[1:], total_energy_array, auxiliary_energy_array, date_times
