@@ -20,7 +20,7 @@ TODO: Yash
 For a given solar collector-storage system, parameters such as **collector area**, **storage volume** and **solar fraction** are crucial from the performance and optimization point of view. The program aims to determine these design parameter in a given **environment** to meet the sepecied **demand** (desired water temperature and water consumption pattern).
 
 # Thermodynamic Approach
-## Nomenclature
+## Terminology
 - $\rho$  -  density of working fluid(water), $kg/m^3$
 - $C_p$   -  specific heat of working fluid, $J/kg°C$
 - $V_{st}$ - Volume of the storage tank, $m^3$
@@ -38,19 +38,87 @@ For a given solar collector-storage system, parameters such as **collector area*
 - $A_c$ - collector area, $m^2$
 - $U_l$ - collector overall heat loss coefficient, $W/m^2°C$
 - $\dot{m_l}$ - desired load mass flow rate, $kg/s$
-- $\dot{m_r}$ - makeup water mass flow rate, $kg/s$
-- $\dot{m_s}$ - mass flow rate from storage, $kg/s$
 - $t$ time step in the simulation analysis, $s$
 
-**Storage tank temperature** ($T_{st}$) is an important parameter
-which influences the system size and performance. My approach is to model the storage tank temerature over a period of a single day or a month or the entire year. The collector area $A_c$ and storage tnak volume $V_{st}$
+<!-- - $\dot{m_r}$ - makeup water mass flow rate, $kg/s$ -->
+<!-- - $\dot{m_s}$ - mass flow rate from storage, $kg/s$ -->
 
-Energy balance of a well mixed storage tank can be
+**Storage tank temperature** ($T_{st}$) is an important parameter
+which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different timeframes—ranging from a single day to a month, or even spanning an entire year. The total collector area $A_c$ and storage tnak volume $V_{st}$ and the solar fraction $F$,  are important from the performance and cost optimization point of view. 
+
+
+<!-- The temperature of the storage tank ($T_{st}$) is a critical factor affecting both the sizing of the system and its operational efficiency. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different timeframes—ranging from a single day to a month, or even spanning an entire year. Key parameters such as the total area of the solar collector (\(A_c\)), the volume of the storage tank (\(V_{st}\)), and the solar fraction (\(F\)) are central to optimizing the system for both performance and cost-effectiveness. -->
+
+
+Energy balance of a well mixed storage tank over a time horizon can be
 expressed as
 
-$$\frac{\rho C_p V_{st}}{dt} = q_s - q_{Ls} - q_{stl}
+<!-- <div align="center">
+
+$$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt}  = q_s - q_{Ls} - q_{stl}$$ 
+<span style="float: right;">(1)</span>
+
+</div> -->
+
+<div align="center">
+
+| $$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$ | (1) |
+|:-------------------------------------------------------------------------------:|----:|
+
+</div>
+
+
+
+<!-- $$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt}  = q_s - q_{Ls} - q_{stl}$$ -->
+<!-- $TODO$ fix the link -->
+
+Here $q_s$, the solar useful heat gain rate, is calculated ([Duffie and Huffman](https://google.com)) as 
+
+$$ q_s = A_c \cdot [I_tF_{R}(\tau\alpha) − F_{R}U_{L}(T_{st} - T_a)]^+$$
+where + indicates that only the positive values of $q_s$ will be considered in the analysis. This implies that hot water from
+the collector enters the tank only when solar useful heat
+gain becomes positive.
+
+During demand, hot water is supplied at $T_L$, the desired load (hot water) temperature. In a time step $t$, when the current ambient temerature is $T_a$ the rate of heat supplied by solar energy $q_{Ls}$ can be written as:
+
+if $T_{st} \geq T_L$
+
+$$
+    q_{Ls} = \dot{m_l} C_p (T_L - T_a)
 $$
 
-where the rate of storage loss ($q_{stl}$) is estimated to be
+If $T_a \leq T_{st} < T_L $, the rate partial energy is supplied by the solar panel which is:
 
-$$$$
+$$q_{Ls} = \dot{m_l} C_p (T_{st} - T_a)$$
+
+Otherwise, 
+
+$$q_{Ls} = 0$$
+
+The rate of storage loss ($q_{stl}$) is estimated to be
+
+$$q_{stl} = U_{st} \cdot A_{st} \cdot (T_{st} - T_a)$$ 
+
+
+During demand, four different cases arise:
+- $T_{st} \geq T_L$ and $q_s > 0$
+- $T_{st} \geq T_L$ and $q_s < 0$
+- $T_{st} < T_L$ and $q_s > 0$
+- $T_{st} < T_L$ and $q_s < 0$
+
+Using these equations, at the current timestep $t$, depending on the state of the system, Equation $(1)$ can be integrated over the time step $t$ and substituting the appropriate values of $q_s$, $q_{Ls}$ and $q_{stl}$. The final temerature of the storage tank $T_{stf}$ is calculated when the initial temeprature at the start of the time step $t$ is $T_{sti}$. 
+
+In my simulation, historical hourly weather data is utilized to derive values for solar irradiance ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector.
+
+
+
+I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal resistance properties of the tank and the thickness of its wall and the insulation used these can be predefined in the $TODO put link here$ [config](https://google.com). 
+
+
+The total energy rate for meeting this demand is, at a particulart time step is:
+
+
+
+
+If the temerature of the storage tank $T_{st} \geq T_L$, the demand is met entirely by the solar energy $q_{Ls}$. Otherwise, the ramaining energy is supplied by the auxiliary heater. 
+

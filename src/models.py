@@ -144,7 +144,7 @@ class SimulationEnvironment:
     """    
     _SIMULATION_STEP = 300
     _SECONDS_IN_A_DAY = 24 * 60 * 60
-    _STEADY_STATE_STARTING_TEMPERATURE = 69.5 
+    _STEADY_STATE_STARTING_TEMPERATURE = 70
 
     def __init__(self, collector_area, storage_tank_volume, config_file) -> None:
         self.config_file = config_file
@@ -597,9 +597,9 @@ class SimulationEnvironment:
         print("AUXILIARY ENERGY",  total_energy_str)
         print("TOTAL_ENERGY", aux_energy_str)
         print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
+        # self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
         self.plot_single_day(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
+        # self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
 
     def simulate_month(self, month=1):
         simulation_start_datetime = datetime(self.simulation_year, month, 1)
@@ -640,9 +640,7 @@ class SimulationEnvironment:
         self.plot_solar_radiation(self.simulation_year, self.environment_conditions)
         self.plot_year(storage_temperature, date_times)
         self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
-
-
-
+        
     def _run_sumilation(self,  start_datetime, period, year=False):
         # Get the simulation params
         simulation_params = self.simulation_params
