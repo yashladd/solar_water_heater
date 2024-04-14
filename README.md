@@ -5,9 +5,8 @@ Program for simulating the heat transfer from a solar panel to a storage tank. T
 - **Solar Collector** - Transfers solar energy to storage tank by circulating water through collector tubes
 - **Storage Tank** - Stores hot water
 - **Solar Pump** - Pumps water from storage tank to solar collector tubes
-- **Make up water supply** - Supplies water at ambient temerature to the stroage tank (As soon as water is used up, ensures tank is **always full**)
-- **Auxiliary heater** - This is used when the solar collector is unable to meet the temperature demand of the Load
-
+- **Make up water supply** - A make up water supply is assumed, which supplies water at ambient temerature to the stroage tank (As soon as water is used up, ensures tank is **always full**)
+- **Auxiliary heater** - An auxiliary water heater is assumed, which provides the the differential energy requirements to supply hot water at the desired temerature. 
 
 <img src="https://github.com/yashladd/solar_water_heater/blob/main/system_components.png" alt="System Components">
 

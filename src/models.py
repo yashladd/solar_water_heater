@@ -385,7 +385,7 @@ class SimulationEnvironment:
             Plot the water consumption pattern of the environment
         """
         load_profiles = self.simulation_params.consumption_pattern
-        hours = np.arange(0, 24, 1)
+        hours = np.arange(0, 25, 1)
         load_presence = np.zeros_like(hours)
         def time_to_hour(time_str):
             hour, minute = map(int, time_str.split(':'))
@@ -396,7 +396,7 @@ class SimulationEnvironment:
             # Using boolean indexing to set the load presence to 1 for the appropriate hours
             load_presence[(hours >= start_hour) & (hours < end_hour)] = 1
         plt.figure(figsize=(12, 3))
-        plt.step(hours, load_presence, where='post', linewidth=2, color='blue')
+        plt.step(hours, load_presence, where='post', linewidth=2, color='steelblue')
 
         plt.gca().spines['left'].set_position(('data', 0))
         plt.gca().spines['bottom'].set_position(('data', 0))
@@ -407,7 +407,7 @@ class SimulationEnvironment:
         plt.xticks(hours)
         plt.xlabel('Time of the day')
         plt.ylabel('Hot water consumption')
-        plt.title('Load Profile Over 24 Hours')
+        plt.title('Water consumption pattern over 24 Hours')
         plt.grid(True)
         plt.show()
 
@@ -423,7 +423,7 @@ class SimulationEnvironment:
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index)
         df = df[df.index.year == year]
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(10, 5))
         # Filter data based on the month and day provided
         if month is not None and day is not None:
             # Specific month and day
@@ -468,8 +468,8 @@ class SimulationEnvironment:
         energies = [total_energy_value, energy_auxiliary_value]
 
         fig, ax = plt.subplots()
-        ax.bar(labels[0], energies[0], color='blue')
-        ax.bar(labels[1], energies[1], color='red')
+        ax.bar(labels[0], energies[0], color='steelblue')
+        ax.bar(labels[1], energies[1], color='lightcoral')
         ax.set_ylabel(f'Energy ({formatted_total_energy.split()[1]})')
         ax.set_title('Total vs Auxiliary Energy')
         # ax.legend([f'Solar Fraction: {solar_fraction:.3f}'])
@@ -484,8 +484,8 @@ class SimulationEnvironment:
         """
             Plots the temeperature profile for single day simulation 
         """
-        plt.figure(figsize=(12, 6))
-        plt.plot(date_times, storage_temperature, color='blue', label='Storage Water Temperature')
+        plt.figure(figsize=(10,5))
+        plt.plot(date_times, storage_temperature, color='steelblue', label='Storage Water Temperature')
 
         # Plotting a line parallel to the x-axis at y=60
         plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
@@ -517,8 +517,8 @@ class SimulationEnvironment:
         """
             Plots the temeperature profile for month's simulation 
         """
-        plt.figure(figsize=(12, 6))
-        plt.plot(date_times, storage_temperature, color='blue', label='Storage Water Temperature')
+        plt.figure(figsize=(10,5))
+        plt.plot(date_times, storage_temperature, color='steelblue', label='Storage Water Temperature')
 
         # Plotting a line parallel to the x-axis at y=60
         plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
@@ -544,8 +544,8 @@ class SimulationEnvironment:
         """
             Plots the temeperature profile simulation of the entire year
         """
-        plt.figure(figsize=(12, 6))
-        plt.plot(date_times, storage_temperature, color='blue', label='Storage Water Temperature')
+        plt.figure(figsize=(10,5))
+        plt.plot(date_times, storage_temperature, color='steelblue', label='Storage Water Temperature')
 
         # Plotting a line parallel to the x-axis at y=60
         plt.axhline(y=60, color='red', linestyle='--', label='Load Temperature requirement = 60°C')
@@ -594,12 +594,12 @@ class SimulationEnvironment:
 
         total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
         total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
-        print("AUXILIARY ENERGY",  total_energy_str)
-        print("TOTAL_ENERGY", aux_energy_str)
-        print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
-        # self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
+        print(f"Total energy consumed: {total_energy_str}")
+        print(f"Auxiliary energy consumed: {aux_energy_str}")
+        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
         self.plot_single_day(storage_temperature, date_times)
-        # self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
 
     def simulate_month(self, month=1):
         simulation_start_datetime = datetime(self.simulation_year, month, 1)
@@ -607,15 +607,12 @@ class SimulationEnvironment:
         days_in_month = calendar.monthrange(self.simulation_year, month)[1]
         # Calculate the simulation_period in seconds
         simulation_period = days_in_month * self._SECONDS_IN_A_DAY
-        # print("Month Simulation _ start_date_time", simulation_start_datetime)
-        # print("Month Simulation _ days in month", days_in_month)
-        # print("Month Simulation _ simulation period", simulation_period)
         storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period)
         total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
         total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
-        print("AUXILIARY ENERGY",  total_energy_str)
-        print("TOTAL_ENERGY", aux_energy_str)
-        print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        print(f"Total energy consumed: {total_energy_str}")
+        print(f"Auxiliary energy consumed: {aux_energy_str}")
+        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
         self.plot_solar_radiation(self.simulation_year, self.environment_conditions, month=month)
         self.plot_month(storage_temperature, date_times)
         self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
@@ -633,10 +630,9 @@ class SimulationEnvironment:
         storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period, year=True)
         total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
         total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
-        print("AUXILIARY ENERGY",  total_energy_str)
-        print("TOTAL_ENERGY", aux_energy_str)
-        print(f'THE SOLAR FRACTION IS: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.simulation_year, self.environment_conditions, month=1)
+        print(f"Total energy consumed: {total_energy_str}")
+        print(f"Auxiliary energy consumed: {aux_energy_str}")
+        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
         self.plot_solar_radiation(self.simulation_year, self.environment_conditions)
         self.plot_year(storage_temperature, date_times)
         self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
