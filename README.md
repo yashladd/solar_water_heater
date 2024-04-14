@@ -1,28 +1,36 @@
 # Simulating a Solar Water Heater
 
 Program for simulating the heat transfer from a solar panel to a storage tank. The system components used are:
-- Solar Collector - transfers solar energy to storage tank by circulating water through collector tubes
-- Storage Tank - stores hot water
-- Solar Pump - pumps water from storage tank to solar collector tubes
-- Make up water supply - Supplies cold water to the stroage tank (As soon as water is used up, ensures tank is always full)
-- Auxiliary heater - This is used when the solar collector is unable to meet the temperature demand of the Load
-- Environment - The sun provides solar radiation
+- **Environment** - The sun provides solar radiation
+- **Solar Collector** - Transfers solar energy to storage tank by circulating water through collector tubes
+- **Storage Tank** - Stores hot water
+- **Solar Pump** - Pumps water from storage tank to solar collector tubes
+- **Make up water supply** - Supplies water at ambient temerature to the stroage tank (As soon as water is used up, ensures tank is **always full**)
+- **Auxiliary heater** - This is used when the solar collector is unable to meet the temperature demand of the Load
 
 
 <img src="https://github.com/yashladd/solar_water_heater/blob/main/system_components.png" alt="System Components">
 
 # How to Use: 
 
-Install the dependencies
-
-1. Create a `python` virualenvironment [Optional]
-2. pip install requirement:
+#### Install the dependencies
+1. Clone the repo:
+    ```sh
+    git clone git@github.com:yashladd/solar_water_heater.git
+    ```
+2. Create a `python` virualenvironment [Optional]
+3. pip install requirement:
 
     ```sh
     pip install -r requirements.txt
     ```
 
-Create a config file similar to [config](https://google.com).
+#### Run the exaplmes 
+The easiest way to run the examples is using `Jupyter` a notebook. Example simulations can be found in the `examples` directory.
+1. An Example showcasing the simulation of a city in India
+2. An Example showcasing the simulation of Salt Lake City
+
+#### Create your own configuration
 
 <details>
 <summary><b>Show instructions</b></summary>
@@ -192,7 +200,7 @@ The total energy met by the auxiliary over the over the course of the entire sim
 
 $$Q_{aux} = \sum \left[ (q_L - q_{Ls})  \cdot t \right]^+ $$
 
-Where the + sign indicates that only the positive values of the equation are taken, meaning the auxiliary is only used when the solar energy is not full able to meet the load demand ( $T_{st} \leq T_L$ ). 
+Where the + sign indicates that only the positive values of the equation are taken, meaning the auxiliary is only used when the solar energy is not fully able to meet the load demand ( $T_{st} \leq T_L$ ). 
 
 Therefore the solar fraction ($F$) can be calculated as:
 
@@ -202,12 +210,13 @@ $$
 
 In this way the solar fraction $F$ can be calculated for the entire simulation by summing up the energies over the time step $t$
 
-In my simulation, historical hourly weather data is utilized to derive values for solar irradiance ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector.
 
+## Solar radiation and Weather Conditions ($I_t$ and $T_a$)
+In my simulation, historical **hourly** weather data is utilized to derive values for solar flux on a tilted surface ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.iotools.get_pvgis_hourly.html)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector.
 
+## Storage loss coefficient ($U_{st}$)
 
-I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal resistance properties of the tank and the thickness of its wall and the insulation used these can be predefined in the $TODO put link here$  
-
+I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal resistance properties of the tank and the thickness of its wall and the insulation used which are predefined in the $TODO put appro link$ **[config](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.iotools.get_pvgis_hourly.html)**
 
 The total energy rate for meeting this demand is, at a particulart time step is:
 
