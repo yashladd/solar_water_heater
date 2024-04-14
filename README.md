@@ -15,7 +15,7 @@ Program for simulating the heat transfer from a solar panel to a storage tank. T
 
 Install the dependencies
 
-1. Create a virualenvironment [Optional]
+1. Create a `python` virualenvironment [Optional]
 2. pip install requirement:
 
     ```sh
@@ -24,64 +24,61 @@ Install the dependencies
 
 Create a config file similar to [config](https://google.com).
 
-<details><summary><b>Show instructions</b></summary>
-    The required conditions for simulation can be defined here for example the latitude, longitude of the environment, the year to simulate, water consumption pattern and the load temerature and other properties can be defined here.
-    Here is a detailed example of a config.json:
+<details>
+<summary><b>Show instructions</b></summary>
 
-    
+The required conditions for simulation can be defined here. For example, the latitude and longitude of the environment, the year to simulate, water consumption patterns, load temperature, and other properties can be defined here. Here is a detailed example of a config.json:
 
-    
-    ```json
-    {
-        "simulation_year": 2006,
-        "environment": {
-            "latitude": 18.53,
-            "longitude": 73.85,
-            "timezone": "Asia/Kolkata"
-        },
-        "solar_collector": {
-            "f_r_tao_alpha": 0.675,
-            "f_r_u_l": 5.656,
-            "tilt": 33
-        },
-        "load_profile": {
-            "litres_per_day": 4500,
-            "water_density": 998,
-            "specific_heat_water": 4180,
-            "desired_temperature": 60,
-            "consumption_pattern": [
-                {
-                    "start": "06:00",
-                    "end": "08:00"
-                },
-                {
-                    "start": "10:00",
-                    "end": "11:00"
-                },
-                {
-                    "start": "12:00",
-                    "end": "13:00"
-                },
-                {
-                    "start": "14:00",
-                    "end": "18:00"
-                }
-            ]
-        },
-        "storage_tank": {
-            "type": "Cylindrical",
-            "height_to_diameter_ratio": 1,
-            "wall_material": "Mild steel",
-            "storage_wall_thicknes": 0.006,
-            "thermal_conductivity_wall": 50,
-            "insulation_material": "Glass wool",
-            "insulation_thickness": 0.2,
-            "insulation_thermal_conductivity": 0.04
-        }
+```json
+{
+    "simulation_year": 2006,
+    "environment": {
+        "latitude": 18.53,
+        "longitude": 73.85,
+        "timezone": "Asia/Kolkata"
+    },
+    "solar_collector": {
+        "f_r_tao_alpha": 0.675,
+        "f_r_u_l": 5.656,
+        "tilt": 33
+    },
+    "load_profile": {
+        "litres_per_day": 4500,
+        "water_density": 998,
+        "specific_heat_water": 4180,
+        "desired_temperature": 60,
+        "consumption_pattern": [
+            {
+                "start": "06:00",
+                "end": "08:00"
+            },
+            {
+                "start": "10:00",
+                "end": "11:00"
+            },
+            {
+                "start": "12:00",
+                "end": "13:00"
+            },
+            {
+                "start": "14:00",
+                "end": "18:00"
+            }
+        ]
+    },
+    "storage_tank": {
+        "type": "Cylindrical",
+        "height_to_diameter_ratio": 1,
+        "wall_material": "Mild steel",
+        "storage_wall_thicknes": 0.006,
+        "thermal_conductivity_wall": 50,
+        "insulation_material": "Glass wool",
+        "insulation_thickness": 0.2,
+        "insulation_thermal_conductivity": 0.04
     }
-    ```
-    
-
+}
+```
+</details>
 
 
 
