@@ -30,7 +30,7 @@ For a given solar collector-storage system, parameters such as **collector area*
 - $U_{st}$ - storage heat loss coefficient, $W/m^2°C$
 - $A_{st}$ surface area of the storage tank, $m^2$
 - $q_s$ - solar useful heat gain rate, $W$
-- $q_{Ls}$ - load met by solar energy, $W$
+- $q_{Ls}$ - load rate met by solar energy, $W$
 - $q_{stl}$ - rate of storage loss, $W$
 - $F_r$ - collector heat removal factor
 - $\tau\alpha$ - average transmittance absorptance product
@@ -61,7 +61,9 @@ $$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$
 
 Here $q_s$, the solar useful heat gain rate, is calculated ([Duffie and Huffman](https://google.com)) as 
 
-$$ q_s = A_c \cdot [I_tF_{R}(\tau\alpha) − F_{R}U_{L}(T_{st} - T_a)]^+$$
+$$
+    q_s = A_c \cdot \left[I_t F_{R}(\tau\alpha) − F_{R} U_{L} (T_{st} - T_a) \right]^+
+$$
 where + indicates that only the positive values of $q_s$ will be considered in the analysis. This implies that hot water from
 the collector enters the tank only when solar useful heat
 gain becomes positive.
@@ -70,6 +72,7 @@ During demand, hot water is supplied at $T_L$, the desired load (hot water) temp
 
 if $T_{st} \geq T_L$
 
+**Equation (2)**
 $$
     q_{Ls} = \dot{m_l} C_p (T_L - T_a)
 $$
@@ -105,8 +108,30 @@ $$\frac{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{stf} - T_a) - \dot{m_l} C
 Equations are similartly derived for all the scenarios mentioned above and their analytical solutions are used to model the storage tank temperature $T_{st}$
 
 ## Calculating Solar Fraction
+Solar fraction, is defined as the percentage of energy provided by solar technology divided by the total energy required.
+
+The total energy required by the system over the course of the entire simulation will be:
+
+$$ Q_L = \sum \dot{m_l} C_p (T_{l} - T_a) \cdot t $$
+
+where $t$ is the time step used in the simulation. 
 
 
+Based on equations for $q_{Ls}$ (Equation (2)), the rate of energy demands met by the auxiliary can be calculated in that time step. 
+
+$$ q_{aux} = q_{L} - q_{Ls} $$
+
+The total energy met by the auxiliary over the over the course of the entire simulation will be:
+
+$$Q_{aux} = \sum \left[ (q_L - q_{Ls})  \cdot t \right]^+ $$
+
+Where the + sign indicates that only the positive values of the equation are taken, meaning the auxiliary is only used when the solar energy is not full able to meet the load demand ( $T_{st} \leq T_L$ ). 
+
+Therefore the solar fraction ($F$) can be calculated as:
+
+$$
+    F = \frac{Q_{Ls}}{Q_L} = 1 - \frac{Q_{aux}}{Q_L}
+$$
 
 
 In my simulation, historical hourly weather data is utilized to derive values for solar irradiance ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector.
