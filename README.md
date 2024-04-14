@@ -61,9 +61,7 @@ $$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$
 
 Here $q_s$, the solar useful heat gain rate, is calculated ([Duffie and Huffman](https://google.com)) as 
 
-$$
-    q_s = A_c \left[ I_t F_{R}(\tau\alpha) − F_{R} U_{L}(T_{stf} - T_a) \right]^+
-$$
+$$q_s = A_c \left[ I_t F_{R} (\tau\alpha) − F_{R} U_{L} (T_{st} - T_a) \right]^+ $$
 where + indicates that only the positive values of $q_s$ will be considered in the analysis. This implies that hot water from
 the collector enters the tank only when solar useful heat
 gain becomes positive.
@@ -73,9 +71,7 @@ During demand, hot water is supplied at $T_L$, the desired load (hot water) temp
 if $T_{st} \geq T_L$
 
 **Equation (2)**
-$$
-    q_{Ls} = \dot{m_l} C_p (T_L - T_a)
-$$
+$$q_{Ls} = \dot{m_l} C_p (T_L - T_a)$$
 
 If $T_a \leq T_{st} < T_L $, the rate partial energy is supplied by the solar panel which is:
 
