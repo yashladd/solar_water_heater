@@ -12,7 +12,78 @@ Program for simulating the heat transfer from a solar panel to a storage tank. T
 <img src="https://github.com/yashladd/solar_water_heater/blob/main/system_components.png" alt="System Components">
 
 # How to Use: 
-TODO: Yash 
+
+Install the dependencies
+
+1. Create a virualenvironment [Optional]
+2. pip install requirement:
+
+    ```sh
+    pip install -r requirements.txt
+    ```
+
+Create a config file similar to [config](https://google.com).
+
+<details><summary><b>Show instructions</b></summary>
+    The required conditions for simulation can be defined here for example the latitude, longitude of the environment, the year to simulate, water consumption pattern and the load temerature and other properties can be defined here.
+    Here is a detailed example of a config.json:
+
+    
+
+    
+    ```json
+    {
+        "simulation_year": 2006,
+        "environment": {
+            "latitude": 18.53,
+            "longitude": 73.85,
+            "timezone": "Asia/Kolkata"
+        },
+        "solar_collector": {
+            "f_r_tao_alpha": 0.675,
+            "f_r_u_l": 5.656,
+            "tilt": 33
+        },
+        "load_profile": {
+            "litres_per_day": 4500,
+            "water_density": 998,
+            "specific_heat_water": 4180,
+            "desired_temperature": 60,
+            "consumption_pattern": [
+                {
+                    "start": "06:00",
+                    "end": "08:00"
+                },
+                {
+                    "start": "10:00",
+                    "end": "11:00"
+                },
+                {
+                    "start": "12:00",
+                    "end": "13:00"
+                },
+                {
+                    "start": "14:00",
+                    "end": "18:00"
+                }
+            ]
+        },
+        "storage_tank": {
+            "type": "Cylindrical",
+            "height_to_diameter_ratio": 1,
+            "wall_material": "Mild steel",
+            "storage_wall_thicknes": 0.006,
+            "thermal_conductivity_wall": 50,
+            "insulation_material": "Glass wool",
+            "insulation_thickness": 0.2,
+            "insulation_thermal_conductivity": 0.04
+        }
+    }
+    ```
+    
+
+
+
 
 
 # Potential Use Case
@@ -68,9 +139,10 @@ gain becomes positive.
 
 During demand, hot water is supplied at $T_L$, the desired load (hot water) temperature. In a time step $t$, when the current ambient temerature is $T_a$ the rate of heat supplied by solar energy $q_{Ls}$ can be written as:
 
+**Equation (2)**
+
 if $T_{st} \geq T_L$
 
-**Equation (2)**
 $$q_{Ls} = \dot{m_l} C_p (T_L - T_a)$$
 
 If $T_a \leq T_{st} < T_L $, the rate partial energy is supplied by the solar panel which is:
@@ -81,7 +153,9 @@ Otherwise,
 
 $$q_{Ls} = 0$$
 
-The rate of storage loss ($q_{stl}$) is estimated to be
+The rate of storage loss ($q_{stl}$) is estimated to be:
+
+**Equation (3)**
 
 $$q_{stl} = U_{st} \cdot A_{st} \cdot (T_{st} - T_a)$$ 
 
@@ -104,7 +178,7 @@ $$\frac{A_c I_t F_{R}(\tau\alpha) - A_c F_{R} U_{L}(T_{stf} - T_a) - \dot{m_l} C
 Equations are similartly derived for all the scenarios mentioned above and their analytical solutions are used to model the storage tank temperature $T_{st}$
 
 ## Calculating Solar Fraction
-Solar fraction, is defined as the percentage of energy provided by solar technology divided by the total energy required.
+Solar fraction, is defined as the percentage of energy provided by solar divided by the total energy required.
 
 The total energy required by the system over the course of the entire simulation will be:
 
@@ -129,12 +203,13 @@ $$
     F = \frac{Q_{Ls}}{Q_L} = 1 - \frac{Q_{aux}}{Q_L}
 $$
 
+In this way the solar fraction $F$ can be calculated for the entire simulation by summing up the energies over the time step $t$
 
 In my simulation, historical hourly weather data is utilized to derive values for solar irradiance ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector.
 
 
 
-I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal resistance properties of the tank and the thickness of its wall and the insulation used these can be predefined in the $TODO put link here$ [config](https://google.com). 
+I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal resistance properties of the tank and the thickness of its wall and the insulation used these can be predefined in the $TODO put link here$  
 
 
 The total energy rate for meeting this demand is, at a particulart time step is:
