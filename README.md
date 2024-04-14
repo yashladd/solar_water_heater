@@ -62,7 +62,7 @@ $$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$
 Here $q_s$, the solar useful heat gain rate, is calculated ([Duffie and Huffman](https://google.com)) as 
 
 $$
-    q_s = A_c \cdot \left[I_t F_{R}(\tau\alpha) − F_{R} U_{L} (T_{st} - T_a) \right]^+
+    q_s = A_c \left[ I_t F_{R}(\tau\alpha) − F_{R} U_{L}(T_{stf} - T_a) \right]^+
 $$
 where + indicates that only the positive values of $q_s$ will be considered in the analysis. This implies that hot water from
 the collector enters the tank only when solar useful heat
