@@ -273,7 +273,7 @@ class SimulationEnvironment:
         """
             Runs the simulation according to the provided start_datetime and period
             :param start_datetime: datetime, the datetime indicating start of the simulation 
-            :param period: 
+            :param period: int, Duration of the simulation in seconds
         """
         # Get the simulation params
         simulation_params = self.simulation_params
