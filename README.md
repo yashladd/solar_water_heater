@@ -10,6 +10,25 @@ Program for simulating the heat transfer from a solar panel to a storage tank. T
 
 <img src="https://github.com/yashladd/solar_water_heater/blob/main/System_component.png" alt="System Components">
 
+# Code Walkthrough
+
+To run a simulation:
+
+Create a `config.json` file (see instructions below)
+
+Import the `SimulationEnvironment` class from `models.py`. It takes 3 parameters:
+
+1. `collector_area`
+2. `storage_tank_volume`
+3. `path_to_your_config_file`
+
+The `SimulationEnvironment` class exposes 3 main functions:
+
+1. `simulate_single_day(starting_temerature=25, month=4, day=15)`
+2. `simulate_month(starting_temerature=25, month=1)`
+3. `simulate_entire_year(starting_temerature=25)`
+
+
 # How to Use: 
 
 #### Install the dependencies
@@ -26,8 +45,8 @@ Program for simulating the heat transfer from a solar panel to a storage tank. T
 
 #### Run the exaplmes 
 I'm using `Jupyter` a notebooks to showcase the simulations ran in varying weather conditions and water consumption patterns. Example simulations can be found in the `examples` directory.
-1. An Example showcasing the simulation of a city in India
-2. An Example showcasing the simulation of Salt Lake City
+1. [An Example showcasing the simulation of a city in India](https://github.com/yashladd/solar_water_heater/blob/main/examples/example_india.ipynb)
+2. [An Example showcasing the simulation of Salt Lake City](https://github.com/yashladd/solar_water_heater/blob/main/examples/example_slc.ipynb)
 
 #### Create your own configuration and run simulations
 
@@ -85,6 +104,30 @@ The required conditions for simulation can be defined here. For example, the lat
     }
 }
 ```
+
+Having created your desired `config.json` file, create a jupyter notebook and import the `SimulationEnvironment` class and `config.json` file.
+
+```python
+import os
+import os.path as path
+import sys
+
+EXAMPLE_DIR = path.abspath("")
+GIT_DIR = path.split(EXAMPLE_DIR)[0]
+SRC_DIR = path.join(GIT_DIR, "src")
+sys.path.append(SRC_DIR)
+
+CONFIG_FILE = f'{EXAMPLE_DIR}/your_config.json'
+from models import SimulationEnvironment
+
+AREA = 50
+VOLUME = 5
+# Instantiate simulation class
+simulation = SimulationEnvironment(AREA, VOLUME, CONFIG_FILE)
+
+# Run your simulations
+```
+
 </details>
 
 
@@ -95,7 +138,7 @@ The required conditions for simulation can be defined here. For example, the lat
 For a given solar collector-storage system, parameters such as **collector area**, **storage volume** and **solar fraction** are crucial from the performance and optimization point of view. The program aims to **estimate** these design parameter in a given **environment** to meet the sepecied **demand** of hot water (desired water temperature and water consumption pattern).
 
 # Thermodynamic Approach
-Since this system cannot be designed for a two-phase condition, it requrires that the hot water temerature in the storage tank never exceeds $100 °C$, the boiling temerature of water (working fluid) to avaiod steam formation. 
+Since this system cannot be designed for a two-phase condition, it requrires that the hot water temerature in the storage tank never exceeds $100 °C$, the boiling temerature of water (working fluid) to avoid steam formation. 
 $T_{st} \leq T_{sat}$ ($100 °C$). 
 
 ## Terminology
@@ -187,7 +230,8 @@ Equations are similartly derived for **all** the cases mentioned above and their
 
 Using the energy balance of a well mixed storage tank over a time horizon $t$:
 
-$$ (\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl} $$
+
+$$(\rho C_p V_{st}) \cdot \frac{d T_{st}}{dt} = q_s - q_{Ls} - q_{stl}$$
 
 The temperature profile $T_{st}$ is modeled under various scenarios, resulting in 6 distinct cases. The analytical solutions for these cases are:
 
