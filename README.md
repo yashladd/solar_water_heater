@@ -16,7 +16,7 @@ To run a simulation:
 
 Create a `config.json` file (see instructions below)
 
-Import the `SimulationEnvironment` class from `models.py`. It takes 3 parameters:
+Import the `SimulationEnvironment` class from `src/models.py`. It takes 3 parameters:
 
 1. `collector_area`
 2. `storage_tank_volume`
@@ -28,6 +28,11 @@ The `SimulationEnvironment` class exposes 3 main functions:
 2. `simulate_month(starting_temerature=25, month=1)`
 3. `simulate_entire_year(starting_temerature=25)`
 
+## Outputs
+
+1. A graph showing the solar radiation during the simulation period
+2. A graph showing the simulation of the Temerature of the tank for the simulation period.
+3. A graph showing the energy consumption and Solar Fraction for the simulation period.
 
 # How to Use: 
 
@@ -150,6 +155,8 @@ $T_{st} \leq T_{sat}$ ($100 °C$).
 - $T_L$ - desired load (hot water) temperature, $°C$
 - $U_{st}$ - storage heat loss coefficient, $W/m^2°C$
 - $A_{st}$ surface area of the storage tank, $m^2$
+- $F_R$ - collector heat removal factor
+- $U_L$ collector overall heat loss coefficient, $W/m^2°C$ 
 - $\tau\alpha$ - average transmittance absorptance product
 - $I_t$ - solar radiation intensity on tilted surface, $W/m^2$
 - $A_c$ - collector area, $m^2$
@@ -163,12 +170,11 @@ $T_{st} \leq T_{sat}$ ($100 °C$).
 - $Q_{Ls}$ load met by solar energy over a specified time horizon, $J$
 - $Q_{aux}$ - auxiliary energy required over a specified time
 horizon, $J$
-- $F_r$ - collector heat removal factor
 - $t$ time step in the simulation analysis, $s$
 
 ## Simulating the Storage tank temerature $T_{st}$
 **Storage tank temperature** ($T_{st}$) is an important parameter
-which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different timeframes—ranging from a single day to a month, or spanning an entire year. 
+which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different time frames—ranging from a single day to a month, or spanning an entire year. 
 
 
 Energy balance of a well mixed storage tank over a time horizon can be
@@ -293,7 +299,7 @@ In this way the solar fraction $F$ can be calculated for the entire simulation b
 
 
 ## Solar radiation and Weather Conditions ($I_t$ and $T_a$)
-In my simulation, **historical hourly** weather data is utilized to derive values for solar flux on a tilted surface ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.iotools.get_pvgis_hourly.html)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector. It provides historical data forom **2005-2015**
+In my simulation, **historical hourly** weather data is utilized to derive values for solar radiation on a tilted surface ($I_t$) and ambient temperature ($T_a$). These metrics are obtained using the **[pvlib](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.iotools.get_pvgis_hourly.html)** Python package, which offers flexibility in terms of adjusting for various geographical locations and different tilts of solar collector. It provides historical data forom **2005-2015**
 
 ## Storage loss coefficient ($U_{st}$)
 
@@ -303,9 +309,11 @@ I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal r
 1. The storage tank is always assumed to be well mixed and always full.
 2. Heat loss within the pipes of the pump that circulate water in the system is neglected.
 3. The ambient temperature $T_a$ and the solar radiation $I_t$ are assumed to be constant within a window of $1 hr$.
+4. Make up water supply is assumed to be at ambient temerature. 
 
 ## Constraints
-1. The temerature of the storage tank must never exceed the boiling temerature of water ($100 °C$)
+1. The temerature of the storage tank must never exceed the boiling temerature of water ($100 °C$).
+2. Currently can only run simulations from year 2005-2015.
 
 ## References
 1. [Govind   N.   Kulkarni,   Shireesh   B.   Kedare,   Santanu   Bandyopadhyay,  “Determination  of  Design  Space  and  Optimization  of  Solar  Water  Heating  Systems”,  Solar  Energy, Vol. 81, pp. 958-968, 2007.](https://www.sciencedirect.com/science/article/pii/S0038092X06003112)

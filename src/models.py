@@ -154,7 +154,7 @@ class SimulationEnvironment:
 
         with open(self.config_file) as f:
             config = json.load(f)
-
+        assert 2005 <= config['simulation_year'] <= 2015, "Supports simulations for years [2005, 2015]."
         self._collector_area = collector_area
         self._storage_tank_volume = storage_tank_volume
 
