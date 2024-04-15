@@ -8,7 +8,7 @@ Program for simulating the heat transfer from a solar panel to a storage tank. T
 - **Make up water supply** - A make up water supply is assumed, which supplies water at ambient temerature to the stroage tank (As soon as water is used up, ensures tank is **always full**)
 - **Auxiliary heater** - An auxiliary water heater is assumed, which provides the the differential energy requirements to supply hot water at the desired temerature. 
 
-<img src="https://github.com/yashladd/solar_water_heater/blob/main/system_components.png" alt="System Components">
+<img src="https://github.com/yashladd/solar_water_heater/blob/main/System_component.png" alt="System Components">
 
 # How to Use: 
 
@@ -92,7 +92,7 @@ The required conditions for simulation can be defined here. For example, the lat
 
 # Potential Use Case
 
-For a given solar collector-storage system, parameters such as **collector area**, **storage volume** and **solar fraction** are crucial from the performance and optimization point of view. The program aims to determine these design parameter in a given **environment** to meet the sepecied **demand** (desired water temperature and water consumption pattern).
+For a given solar collector-storage system, parameters such as **collector area**, **storage volume** and **solar fraction** are crucial from the performance and optimization point of view. The program aims to **estimate** these design parameter in a given **environment** to meet the sepecied **demand** of hot water (desired water temperature and water consumption pattern).
 
 # Thermodynamic Approach
 ## Terminology

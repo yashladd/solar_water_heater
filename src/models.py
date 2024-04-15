@@ -19,47 +19,6 @@ SimulationParameters = namedtuple('SimulationParameters', [
 ])
 
 
-
-class Load:
-    """
-        Defines the load properties, consumption pattern for the scenario and calculates the mass flow rate
-    """
-    def __init__(self, config) -> None:
-        # Desired hot water temperature during demand in °C
-        self.T_l = config['desired_temperature']
-        # Required load supply in litres
-        self.litres_per_day = config['litres_per_day']
-        # Consumption patter throughout the day
-        self.consumption_pattern = config['consumption_pattern']
-        # density kg/m^3
-        self.rho = config['water_density']
-        # Specific heat of the fluid we will consider only water J/kg°C
-        self.C_p = config['specific_heat_water']
-        # desired load mass flow rate, kg/s
-        self.m_l_dot = self.calculate_mass_flow_rate()
-
-    
-    
-    def calculate_mass_flow_rate(self):
-        """
-            Calculate the mass flow rate m_l_dot in kg/s
-        """
-        total_seconds = 0
-    
-        for period in self.consumption_pattern:
-            start_hour, start_minute = map(int, period["start"].split(':'))
-            end_hour, end_minute = map(int, period["end"].split(':'))
-            
-            start_time = start_hour * 3600 + start_minute * 60
-            end_time = end_hour * 3600 + end_minute * 60
-            
-            # Calculate the duration of this period in seconds and add to the total
-            duration = end_time - start_time
-            total_seconds += duration
-        total_kg_per_day = (self.litres_per_day / 1000) * self.rho
-        return total_kg_per_day/total_seconds if total_seconds > 0 else 0
-
-
 class SolarCollector:
     """
         Models the properties of solar collector 
@@ -83,7 +42,7 @@ class Storage:
     """
     def __init__(self, volume, config) -> None:
         
-        # Ration of height to diameter
+        # Ratio of height to diameter
         self.height_diameter_ratio = config['height_to_diameter_ratio']
         # Material of storage wall 
         self.wall_matetial = config['wall_material']
@@ -107,10 +66,16 @@ class Storage:
         self.A_st = self.calculate_surface_area()
 
     def calculate_surface_area(self):
+        """
+            Calculate the surface area A_st based on the volume and h:d
+        """
         A_st = 1.845*(2 + self.height_diameter_ratio) * np.power(self.V_st, 2/3)
         return A_st
     
     def estimate_storage_heat_loss_coefficient(self):
+        """
+            Esitmates U_st based on the thermal resistance & thickness of the material and insulations used
+        """
         t_w = self.storage_wall_thicknes  # Thickness of the wall tank in m
         k_w = self.storage_wall_thermal_conductivity  # Thermal conductivity of storage walls in W/m-K
         t_ins = self.insulation_thickness  # Thickness of the insulation in m
@@ -121,6 +86,44 @@ class Storage:
         U_st = 1 / ((t_w / k_w) + (t_ins / k_ins))
         
         return U_st
+    
+
+class Load:
+    """
+        Defines the load properties, consumption pattern for the scenario and calculates the mass flow rate
+    """
+    def __init__(self, config) -> None:
+        # Desired hot water temperature during demand in °C
+        self.T_l = config['desired_temperature']
+        # Required load supply in litres
+        self.litres_per_day = config['litres_per_day']
+        # Consumption patter throughout the day
+        self.consumption_pattern = config['consumption_pattern']
+        # density kg/m^3
+        self.rho = config['water_density']
+        # Specific heat of the fluid we will consider only water J/kg°C
+        self.C_p = config['specific_heat_water']
+        # desired load mass flow rate, kg/s
+        self.m_l_dot = self.calculate_mass_flow_rate()
+
+    
+    def calculate_mass_flow_rate(self):
+        """
+            Calculate the mass flow rate m_l_dot in kg/s
+        """
+        total_seconds = 0
+        # Calculate the total consumption period based on the consumption profile
+        for period in self.consumption_pattern:
+            start_hour, start_minute = map(int, period["start"].split(':'))
+            end_hour, end_minute = map(int, period["end"].split(':'))
+            
+            start_time = start_hour * 3600 + start_minute * 60
+            end_time = end_hour * 3600 + end_minute * 60
+            
+            duration = end_time - start_time
+            total_seconds += duration
+        total_kg_per_day = (self.litres_per_day / 1000) * self.rho
+        return total_kg_per_day/total_seconds if total_seconds > 0 else 0
 
 
 class EnvironmentConditionsError(Exception):
@@ -181,7 +184,123 @@ class SimulationEnvironment:
         self._storage_tank_volume = value
         self.simulation_params = self.create_simulation_parameters()
 
-    def get_environment_conditions(self):
+    def simulate_single_day(self, starting_temerature=None, month=4, day=15):
+        """
+            Run simulation for a single day
+            :param month: int , optional month number (1-12).
+            :param day: int, optional day of the month.
+            :param starting_temerature: flaot, the storage temerature at the start of the simulation
+        """
+        # Check of correct params are passed
+        assert 1 <= month <= 12, "Month must be within 1-12 range."
+        days_in_month = calendar.monthrange(self.simulation_year, month)[1]
+        assert 1 <= day <= days_in_month, f"Day must be within 1-{days_in_month} range for month {month}."
+        if starting_temerature:
+            assert 1 <= starting_temerature <= 100, f"Starting temerature must be between [0, 100]."
+
+        starting_temerature = starting_temerature if starting_temerature is not None else self._STEADY_STATE_STARTING_TEMPERATURE
+        simulation_start_datetime = datetime(self.simulation_year, month, day)
+        simulation_period = self._SECONDS_IN_A_DAY
+        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(starting_temerature, simulation_start_datetime, simulation_period)
+
+        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
+        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
+        print(f"Total energy consumed: {total_energy_str}")
+        print(f"Auxiliary energy consumed: {aux_energy_str}")
+        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
+        self.plot_single_day(storage_temperature, date_times)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
+
+    def simulate_month(self, starting_temerature=None, month=1):
+        """
+            Run simulation for a the given month
+            :param month: int , optional month number (1-12).
+            :param starting_temerature: flaot, optional, the storage temerature at the start of the simulation
+        """
+        # Check a valid month is provided
+        assert 1 <= month <= 12, "Month must be within 1-12 range."
+        if starting_temerature:
+            assert 1 <= starting_temerature <= 100, f"Starting temerature must be between [0, 100]."
+
+
+        starting_temerature = starting_temerature if starting_temerature is not None else self._STEADY_STATE_STARTING_TEMPERATURE
+        simulation_start_datetime = datetime(self.simulation_year, month, 1)
+        # Calculate the number of days in the month
+        days_in_month = calendar.monthrange(self.simulation_year, month)[1]
+        # Calculate the simulation_period in seconds
+        simulation_period = days_in_month * self._SECONDS_IN_A_DAY
+        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(starting_temerature, simulation_start_datetime, simulation_period)
+        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
+        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
+        print(f"Total energy consumed: {total_energy_str}")
+        print(f"Auxiliary energy consumed: {aux_energy_str}")
+        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year, self.environment_conditions, month=month)
+        self.plot_month(storage_temperature, date_times)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
+
+
+    def simulate_entire_year(self, starting_temerature=None):
+        """
+            Run simulation for a the given month
+            :param starting_temerature: flaot, the storage temerature at the start of the simulation
+        """
+        def get_seconds_in_a_year(year):
+            """Returns the number of seconds in a year"""
+            if calendar.isleap(year):
+                return 366 * 24 * 60 * 60
+            else:
+                return 365 * 24 * 60 * 60
+            
+        if starting_temerature:
+            assert 1 <= starting_temerature <= 100, f"Starting temerature must be between [0, 100]."
+            
+        starting_temerature = starting_temerature if starting_temerature is not None else self._STEADY_STATE_STARTING_TEMPERATURE
+        simulation_start_datetime = datetime(self.simulation_year, 1, 1)
+        simulation_period = get_seconds_in_a_year(self.simulation_year)
+        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(starting_temerature, simulation_start_datetime, simulation_period, year=True)
+        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
+        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
+        print(f"Total energy consumed: {total_energy_str}")
+        print(f"Auxiliary energy consumed: {aux_energy_str}")
+        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
+        self.plot_solar_radiation(self.simulation_year, self.environment_conditions)
+        self.plot_year(storage_temperature, date_times)
+        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
+        
+    def _run_sumilation(self, starting_temerature, start_datetime, period, year=False):
+        """
+            Runs the simulation according to the provided start_datetime and period
+            :param start_datetime: datetime, the datetime indicating start of the simulation 
+            :param period: 
+        """
+        # Get the simulation params
+        simulation_params = self.simulation_params
+
+        # Initialize steady state starting temperature and reusults
+        storage_water_temerature = [starting_temerature]
+        delta_t = self._SIMULATION_STEP if not year else 15 * 60
+        date_times = []
+        total_energy_array = []
+        auxiliary_energy_array = []
+        
+        for timestep in range(0, period, delta_t):
+            # Calculate the current simulation time
+            current_date_time = start_datetime + timedelta(seconds=timestep)
+            date_times.append(current_date_time)
+            # Get current solar radiation and ambient temperature
+            I_t, T_a = self.get_solar_radiation_and_temperature(current_date_time, simulation_params.environment_conditions)
+            # Get only time H:M to check consumption
+            current_time = current_date_time.time()
+            is_consumed = self.is_water_consumed(current_time, simulation_params.consumption_pattern)
+            total_energy_array.append(0 if not is_consumed else self.calculate_total_energy_rate(simulation_params, T_a) * delta_t)
+            auxiliary_energy_array.append(0 if not is_consumed else self.calculate_auxiliary_energy_rate(simulation_params, storage_water_temerature[-1], T_a) * delta_t)
+            storage_water_temerature.append(self.get_next_temperature(is_consumed, simulation_params, I_t, storage_water_temerature[-1], simulation_params.T_l, T_a, delta_t))
+
+        return storage_water_temerature[1:], total_energy_array, auxiliary_energy_array, date_times
+
+    def get_environment_conditions(self) -> pd.DataFrame:
         """
             Get the Solar radiation and ambient temperature for the current location according to config_file provided
         """
@@ -204,9 +323,8 @@ class SimulationEnvironment:
         except Exception as e:
             raise EnvironmentConditionsError(f"Failed to fetch data from pvlib with these environment conditions:\n {e}")
 
-    def create_simulation_parameters(self):
+    def create_simulation_parameters(self) -> SimulationParameters:
         """Create a SimulationParameters object encapsulating all necessary simulation parameters."""
-        # print("Updated params")
         params = SimulationParameters(
             A_c=self._collector_area,
             V_st=self._storage_tank_volume,
@@ -244,7 +362,8 @@ class SimulationEnvironment:
         return poa_global, temp_air
 
     @staticmethod
-    def is_water_consumed(current_time, water_consumption):
+    def is_water_consumed(current_time, water_consumption) -> bool: 
+        """ At the given simulation timestep checks if water is being consumed """
         is_water_consumed = False
         
         for period in water_consumption:
@@ -261,7 +380,7 @@ class SimulationEnvironment:
     @staticmethod
     def handle_case_1(params, I_t, T_sti, T_a, delta_t):
         """
-            Solving equation 11a analytically
+            Solving equation 1(a) analytically
         """
         k_1 = params.A_c * params.F_r_U_l + params.U_st * params.A_st
         
@@ -279,7 +398,7 @@ class SimulationEnvironment:
     @staticmethod
     def handle_case_2(params, I_t, T_sti, T_a, delta_t):
         """
-            Solving equation 11b analytically
+            Solving equation 1(b) analytically
         """
         # c1
         c_1 = params.m_l_dot * params.C_p * (params.T_l - T_a)
@@ -294,7 +413,7 @@ class SimulationEnvironment:
     @staticmethod
     def handle_case_3(params, I_t, T_sti, T_a, delta_t):
         """
-            Solving equation 11c analytically
+            Solving equation 1(c) analytically
         """
         # k_0
         k_0 = (params.A_c * params.F_r_U_l + params.m_l_dot * params.C_p + params.U_st * params.A_st)
@@ -311,7 +430,7 @@ class SimulationEnvironment:
     @staticmethod
     def handle_case_4(params,I_t, T_sti, T_a, delta_t):
         """
-            Solving equation 11d analytically
+            Solving equation 1(d) analytically
         """
         c_1 = params.m_l_dot * params.C_p
         c_2 = params.U_st * params.A_st
@@ -322,12 +441,14 @@ class SimulationEnvironment:
 
     @staticmethod
     def get_solar_useful_gain_rate(params, I_t, T_st, T_a):
+        """ Calculates the solar useful gain rate """
         if int(I_t) == 0:
             return 0.0
         return params.A_c * (I_t * params.F_r_tao_alpha - params.F_r_U_l * (T_st - T_a))
     
     @staticmethod
     def handle_case_5(q_s, params, I_t, T_sti, T_a, delta_t):
+        """ Returns the next temerature when water is not consumed """
         if q_s <= 0:
             exp = math.exp((params.U_st * params.A_st)/ (params.rho * params.C_p * params.V_st))
             return T_a * (1 - exp) + T_sti * exp
@@ -361,6 +482,9 @@ class SimulationEnvironment:
     
     @staticmethod
     def calculate_total_energy_rate(params, T_a):
+        """
+            Calculates the total energy required to supply hot water
+        """
         m_l_dot = params.m_l_dot
         C_p = params.C_p
         T_l = params.T_l
@@ -368,6 +492,9 @@ class SimulationEnvironment:
     
     @staticmethod
     def calculate_auxiliary_energy_rate(params, T_st, T_a):
+        """
+            Calculates the heat supplied by auxiliary based on the current T_st and T_a
+        """
         m_l_dot = params.m_l_dot
         C_p = params.C_p
         T_l = params.T_l
@@ -414,16 +541,16 @@ class SimulationEnvironment:
     @staticmethod
     def plot_solar_radiation(year, df, month=None, day=None):
         """
-        Plot the poa_global against time from a pandas DataFrame.
-        
-        :param df: pandas DataFrame with a DateTimeIndex and 'poa_global' column.
-        :param month: int or str, optional month number (1-12) or name.
-        :param day: int, optional day of the month.
+            Plot the poa_global against time from a pandas DataFrame.
+            
+            :param df: pandas DataFrame with a DateTimeIndex and 'poa_global' column.
+            :param month: int or str, optional month number (1-12) or name.
+            :param day: int, optional day of the month.
         """
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index)
         df = df[df.index.year == year]
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(12, 6))
         # Filter data based on the month and day provided
         if month is not None and day is not None:
             # Specific month and day
@@ -457,7 +584,7 @@ class SimulationEnvironment:
     @staticmethod
     def plot_energy_bar_graph(formatted_total_energy, formatted_energy_auxiliary):
         """
-        Plot a bar graph of the total energy required and the energy met by auxiliary.
+            Plot a bar graph of the total energy required and the energy met by auxiliary.
         """
         # Calculate solar fraction
         # Extract numerical values for plotting
@@ -472,7 +599,6 @@ class SimulationEnvironment:
         ax.bar(labels[1], energies[1], color='lightcoral')
         ax.set_ylabel(f'Energy ({formatted_total_energy.split()[1]})')
         ax.set_title('Total vs Auxiliary Energy')
-        # ax.legend([f'Solar Fraction: {solar_fraction:.3f}'])
         legend_handle = Line2D([0], [0], linestyle='none', marker='s', markerfacecolor='yellow', markeredgewidth=0.0)
 
         # Add legend to the plot with custom handle for the solar fraction
@@ -566,6 +692,11 @@ class SimulationEnvironment:
     
     @staticmethod
     def format_energy_values(total, auxiliary):
+        """
+            Format energy values into human readble form annotate with approriate unit (J/KJ/MJ/GJ)
+            :param: total: float, total energy
+            :param: auxiliart: float, auxiliart energy
+        """
         # Define the energy unit thresholds
         thresholds = {
             'J': 1e3,      # Up to 1,000 J, use J
@@ -587,78 +718,4 @@ class SimulationEnvironment:
         return total_energy_formatted, energy_auxiliary_formatted
 
 
-    def simulate_single_day(self, month=4, day=15):
-        simulation_start_datetime = datetime(self.simulation_year, month, day)
-        simulation_period = self._SECONDS_IN_A_DAY
-        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period)
-
-        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
-        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
-        print(f"Total energy consumed: {total_energy_str}")
-        print(f"Auxiliary energy consumed: {aux_energy_str}")
-        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.simulation_year ,self.environment_conditions, month=month, day=day)
-        self.plot_single_day(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
-
-    def simulate_month(self, month=1):
-        simulation_start_datetime = datetime(self.simulation_year, month, 1)
-        # Calculate the number of days in the month
-        days_in_month = calendar.monthrange(self.simulation_year, month)[1]
-        # Calculate the simulation_period in seconds
-        simulation_period = days_in_month * self._SECONDS_IN_A_DAY
-        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period)
-        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
-        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
-        print(f"Total energy consumed: {total_energy_str}")
-        print(f"Auxiliary energy consumed: {aux_energy_str}")
-        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.simulation_year, self.environment_conditions, month=month)
-        self.plot_month(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
-
-
-    def simulate_entire_year(self):
-        def get_seconds_in_a_year(year):
-            """Returns the number of seconds in a year"""
-            if calendar.isleap(year):
-                return 366 * 24 * 60 * 60
-            else:
-                return 365 * 24 * 60 * 60
-        simulation_start_datetime = datetime(self.simulation_year, 1, 1)
-        simulation_period = get_seconds_in_a_year(self.simulation_year)
-        storage_temperature, total_energy_array, auxiliary_energy_array, date_times = self._run_sumilation(simulation_start_datetime, simulation_period, year=True)
-        total_energy_consumed, enrygy_supplied_by_auxiliary  = sum(total_energy_array), sum(auxiliary_energy_array)
-        total_energy_str, aux_energy_str  = self.format_energy_values(total_energy_consumed, enrygy_supplied_by_auxiliary)
-        print(f"Total energy consumed: {total_energy_str}")
-        print(f"Auxiliary energy consumed: {aux_energy_str}")
-        print(f'The solar fraction (F) is: {(1 - (enrygy_supplied_by_auxiliary/total_energy_consumed)):.3f}')
-        self.plot_solar_radiation(self.simulation_year, self.environment_conditions)
-        self.plot_year(storage_temperature, date_times)
-        self.plot_energy_bar_graph(total_energy_str, aux_energy_str)
-        
-    def _run_sumilation(self,  start_datetime, period, year=False):
-        # Get the simulation params
-        simulation_params = self.simulation_params
-
-        # Initialize steady state starting temperature and reusults
-        storage_water_temerature = [self._STEADY_STATE_STARTING_TEMPERATURE]
-        delta_t = self._SIMULATION_STEP if not year else 15 * 60
-        date_times = []
-        total_energy_array = []
-        auxiliary_energy_array = []
-        
-        for timestep in range(0, period, delta_t):
-            # Calculate the current simulation time
-            current_date_time = start_datetime + timedelta(seconds=timestep)
-            date_times.append(current_date_time)
-            # Get current solar radiation and ambient temperature
-            I_t, T_a = self.get_solar_radiation_and_temperature(current_date_time, simulation_params.environment_conditions)
-            # Get only time H:M to check consumption
-            current_time = current_date_time.time()
-            is_consumed = self.is_water_consumed(current_time, simulation_params.consumption_pattern)
-            total_energy_array.append(0 if not is_consumed else self.calculate_total_energy_rate(simulation_params, T_a) * delta_t)
-            auxiliary_energy_array.append(0 if not is_consumed else self.calculate_auxiliary_energy_rate(simulation_params, storage_water_temerature[-1], T_a) * delta_t)
-            storage_water_temerature.append(self.get_next_temperature(is_consumed, simulation_params, I_t, storage_water_temerature[-1], simulation_params.T_l, T_a, delta_t))
-
-        return storage_water_temerature[1:], total_energy_array, auxiliary_energy_array, date_times
+    
