@@ -24,11 +24,12 @@ Import the `SimulationEnvironment` class from `src/models.py`. It takes 3 parame
 
 The `SimulationEnvironment` class exposes 3 main functions:
 
-1. `simulate_single_day(starting_temerature=25, month=4, day=15)`
-2. `simulate_month(starting_temerature=25, month=1)`
-3. `simulate_entire_year(starting_temerature=25)`
+1. `simulate_single_day(starting_temerature, month=4, day=15)`
+2. `simulate_month(starting_temerature, month=1)`
+3. `simulate_entire_year(starting_temerature)`
 
 ## Outputs
+The simulations are ran for the simulation period in intervals of timestep $t= 300$ seconds.
 
 1. A graph showing the solar radiation during the simulation period
 2. A graph showing the simulation of the Temerature of the tank for the simulation period.
@@ -52,6 +53,7 @@ The `SimulationEnvironment` class exposes 3 main functions:
 I'm using `Jupyter` a notebooks to showcase the simulations ran in varying weather conditions and water consumption patterns. Example simulations can be found in the `examples` directory.
 1. [An Example showcasing the simulation of a city in India](https://github.com/yashladd/solar_water_heater/blob/main/examples/example_india.ipynb)
 2. [An Example showcasing the simulation of Salt Lake City](https://github.com/yashladd/solar_water_heater/blob/main/examples/example_slc.ipynb)
+3. [An Example showcasing demand of continuous hot water supply throughout the day in India](https://github.com/yashladd/solar_water_heater/blob/main/examples/example_water_continuous.ipynb)
 
 #### Create your own configuration and run simulations
 
@@ -160,7 +162,6 @@ $T_{st} \leq T_{sat}$ ($100 °C$).
 - $\tau\alpha$ - average transmittance absorptance product
 - $I_t$ - solar radiation intensity on tilted surface, $W/m^2$
 - $A_c$ - collector area, $m^2$
-- $U_l$ - collector overall heat loss coefficient, $W/m^2°C$
 - $\dot{m_l}$ - desired load mass flow rate, $kg/s$
 - $q_s$ - solar useful heat gain rate, $W$
 - $q_{Ls}$ - load rate met by solar energy, $W$
@@ -174,7 +175,7 @@ horizon, $J$
 
 ## Simulating the Storage tank temerature $T_{st}$
 **Storage tank temperature** ($T_{st}$) is an important parameter
-which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different time frames—ranging from a single day to a month, or spanning an entire year. 
+which influences the system size and performance. In my simulation, I focus on modeling the temperature dynamics of the storage tank across different time frames—ranging from a single day to a month, or spanning an entire year. The total energy required by the system and energy demands met by auxiliary heater are tracked during the simulation.
 
 
 Energy balance of a well mixed storage tank over a time horizon can be
@@ -222,7 +223,7 @@ During **demand** for hot water, four different cases arise:
 
 When there is **no** demand, $q_{Ls} = 0$ naturally, and the temerature $T_{st}$ is modeled only based on $q_s$ and $q_{stl}$ 
 
-Using these equations, at the current timestep $t$, depending on the **current state** of the system, Equation $(1)$ can be integrated over the time step $t$ and by substituting the appropriate values of $q_s$, $q_{Ls}$ and $q_{stl}$ (Euation(2) & Euqation(3)). The final temerature of the storage tank $T_{stf}$ is calculated when the initial temeprature at the start of the time step $t$ is $T_{sti}$. 
+Using these equations, at the current timestep $t$, depending on the **current state** of the system, Equation $(1)$ can be integrated over the time step $t$ and by substituting the appropriate values of $q_s$, $q_{Ls}$ and $q_{stl}$ (from Equation(2) & Euqation(3)). The final temerature of the storage tank $T_{stf}$ is calculated when the initial temeprature at the start of the time step $t$ is $T_{sti}$. 
 
 For instance when $T_{st} \geq T_L$ and $q_s > 0$, the analalytical equation derived by integrating Equation (1) and substituting appropriate values, is given by:
 
@@ -315,7 +316,12 @@ I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal r
 1. The temerature of the storage tank must never exceed the boiling temerature of water ($100 °C$).
 2. Currently can only run simulations from year 2005-2015.
 
+## Future work
+1. Calculating cost for various system components.
+2. For a desired solar fraction $F$ in a given environment, determine the optimal colelctor area $A_c$ and volume of the storage tank $V_{st}$. This will involve optimizing a multi objective functionand will aim to reduce total cost for designing the system.
+
 ## References
 1. [Govind   N.   Kulkarni,   Shireesh   B.   Kedare,   Santanu   Bandyopadhyay,  “Determination  of  Design  Space  and  Optimization  of  Solar  Water  Heating  Systems”,  Solar  Energy, Vol. 81, pp. 958-968, 2007.](https://www.sciencedirect.com/science/article/pii/S0038092X06003112)
 2. [Duffie, J.A., Beckman, W.A., 1991. Solar Engineering of Thermal
 Processes, second ed. Wiley, New York, pp. 686–732.](https://www.sku.ac.ir/Datafiles/BookLibrary/45/John%20A.%20Duffie,%20William%20A.%20Beckman(auth.)-Solar%20Engineering%20of%20Thermal%20Processes,%20Fourth%20Edition%20(2013).pdf)
+3. [Solar heating design, by the f-chart method, Beckman, W. A., Klein, S. A, Duffie, J. A. NSF, ERDA, and University of Wisconsin. New York, Wiley-Interscience, 1977. 214 pp.](https://search.worldcat.org/title/solar-heating-design-by-the-f-chart-method/oclc/3168307)
