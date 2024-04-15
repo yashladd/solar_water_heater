@@ -318,7 +318,7 @@ I have estimated $U_{st}$, the storage heat loss coefficient, based on thermal r
 
 ## Future work
 1. Calculating cost for various system components.
-2. For a desired solar fraction $F$ in a given environment, determine the optimal colelctor area $A_c$ and volume of the storage tank $V_{st}$. This will involve optimizing a multi objective functionand will aim to reduce total cost for designing the system.
+2. For a desired solar fraction $F$ in a given environment, determine the optimal colelctor area $A_c$ and volume of the storage tank $V_{st}$. This will involve optimizing a multi-objective function and will aim to reduce total cost for designing the system.
 
 ## References
 1. [Govind   N.   Kulkarni,   Shireesh   B.   Kedare,   Santanu   Bandyopadhyay,  “Determination  of  Design  Space  and  Optimization  of  Solar  Water  Heating  Systems”,  Solar  Energy, Vol. 81, pp. 958-968, 2007.](https://www.sciencedirect.com/science/article/pii/S0038092X06003112)
